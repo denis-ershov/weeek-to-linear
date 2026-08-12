@@ -8,6 +8,7 @@ export type WeeekProjectId = string & { readonly __brand: unique symbol };
 export type WeeekTaskId = string & { readonly __brand: unique symbol };
 export type WeeekTagId = string & { readonly __brand: unique symbol };
 export type WeeekUserId = string & { readonly __brand: unique symbol };
+export type WeeekDocId = string & { readonly __brand: unique symbol };
 
 export type LinearId = string & { readonly __brand: unique symbol };
 export type LinearProjectId = string & { readonly __brand: unique symbol };
@@ -16,6 +17,7 @@ export type LinearLabelId = string & { readonly __brand: unique symbol };
 export type LinearUserId = string & { readonly __brand: unique symbol };
 export type LinearTeamId = string & { readonly __brand: unique symbol };
 export type LinearWorkflowStateId = string & { readonly __brand: unique symbol };
+export type LinearDocId = string & { readonly __brand: unique symbol };
 
 export const makeWeeekId = <T extends string>(id: string | number): T => String(id) as T;
 export const makeLinearId = <T extends string>(id: string): T => id as T;
@@ -31,6 +33,16 @@ export type WeeekPriority = 0 | 1 | 2 | 3;
  * 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low
  */
 export type LinearPriority = 0 | 1 | 2 | 3 | 4;
+
+/**
+ * Стратегии назначения наблюдателей (Subscribers)
+ */
+export type WatcherStrategy = 'none' | 'secondary_assignees' | 'global_watcher' | 'both';
+
+/**
+ * Стратегии повторной синхронизации
+ */
+export type SyncStrategy = 'skip' | 'update_all' | 'update_status_only';
 
 /**
  * Интерфейс состояния миграции (.weeek-linear/state.json)
@@ -64,6 +76,21 @@ export interface MigrationState {
       name: string;
     }
   >;
+  boardColumns?: Record<
+    string,
+    {
+      linearStateId: string;
+      name: string;
+    }
+  >;
+  documents?: Record<
+    string,
+    {
+      linearDocId: string;
+      title: string;
+      migratedAt: string;
+    }
+  >;
   tasks: Record<
     string,
     {
@@ -87,6 +114,15 @@ export interface MigrationOptions {
   force?: boolean;
   includeCompleted?: boolean;
   includeDeleted?: boolean;
+  includeDocuments?: boolean;
+  createMissingStates?: boolean;
+  renameMatchedStates?: boolean;
+  recreateAllColumns?: boolean;
+  boardColumnMapping?: Record<string, string>; // weeekColumnId -> linearStateId | '__create_new__'
+  userMapping?: Record<string, string>; // weeekUserId -> linearUserId | 'unassigned' | 'skip'
+  watcherStrategy?: WatcherStrategy;
+  globalWatcherUserId?: string;
+  syncStrategy?: SyncStrategy;
   logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
 }
@@ -100,6 +136,7 @@ export interface PreflightValidationResult {
   tasksCount: number;
   usersCount: number;
   labelsCount: number;
+  documentsCount?: number;
   warnings: string[];
   errors: string[];
 }
@@ -120,6 +157,7 @@ export interface MigrationSummary {
   tasks: {
     total: number;
     created: number;
+    updated: number;
     skipped: number;
     failed: number;
     parentsResolved: number;
@@ -130,9 +168,15 @@ export interface MigrationSummary {
     created: number;
     reused: number;
   };
+  documents: {
+    total: number;
+    created: number;
+    skipped: number;
+    failed: number;
+  };
   warnings: string[];
   errors: Array<{
-    entityType: 'project' | 'task' | 'label' | 'relation' | 'auth';
+    entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state';
     entityId: string;
     message: string;
     recoverable: boolean;

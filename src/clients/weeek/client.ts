@@ -1,15 +1,27 @@
 import type PQueue from 'p-queue';
 import { CONSTANTS } from '../../config/constants.js';
 import { logger } from '../../utils/logger.js';
+import { t, tf } from '../../i18n/index.js';
 import { ApiError, withRetry } from '../../utils/retry.js';
 import { createConcurrencyQueue } from '../../utils/queue.js';
 import {
   WeeekProjectSchema,
+  WeeekBoardSchema,
   WeeekTaskSchema,
   WeeekUserSchema,
   WeeekTagSchema,
+  WeeekBoardColumnSchema,
+  WeeekDocumentSchema,
 } from './schemas.js';
-import type { WeeekProject, WeeekTask, WeeekUser, WeeekTag } from './types.js';
+import type {
+  WeeekProject,
+  WeeekBoard,
+  WeeekTask,
+  WeeekUser,
+  WeeekTag,
+  WeeekBoardColumn,
+  WeeekDocument,
+} from './types.js';
 import { z } from 'zod';
 
 export interface WeeekClientOptions {
@@ -44,7 +56,7 @@ export class WeeekClient {
     return this.queue.add(() =>
       withRetry(async () => {
         const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-        logger.debug({ url, method: options?.method || 'GET' }, 'Выполнение запроса к WEEEK API');
+        logger.debug({ url, method: options?.method || 'GET' }, t('logs.weeekClient.request'));
 
         let response: Response;
         try {
@@ -146,7 +158,7 @@ export class WeeekClient {
         // Пробуем следующий эндпоинт
       }
     }
-    logger.debug('Пользователи рабочего пространства WEEEK не найдены по стандартным эндпоинтам');
+    logger.debug(t('logs.weeekClient.usersNotFound'));
     return [];
   }
 
@@ -171,8 +183,275 @@ export class WeeekClient {
         // Пробуем следующий эндпоинт
       }
     }
-    logger.debug('Теги WEEEK не найдены или список пуст');
+    logger.debug(t('logs.weeekClient.tagsNotFound'));
     return [];
+  }
+
+  /**
+   * Получение списка досок проекта или всего рабочего пространства WEEEK
+   */
+  async getBoards(options: { projectId?: string } = {}): Promise<WeeekBoard[]> {
+    const endpoints = [
+      options.projectId ? `/tm/boards?projectId=${options.projectId}` : null,
+      options.projectId ? `/ws/boards?projectId=${options.projectId}` : null,
+      '/tm/boards',
+      '/ws/boards',
+      '/boards',
+    ].filter(Boolean) as string[];
+
+    const allBoards: WeeekBoard[] = [];
+    const seenIds = new Set<string>();
+
+    for (const endpoint of endpoints) {
+      try {
+        const data = await this.request<Record<string, unknown>>(endpoint);
+        const boardsList =
+          (data as { boards?: unknown[] })?.boards ||
+          (data as { data?: { boards?: unknown[] } })?.data?.boards ||
+          (data as { data?: unknown[] })?.data ||
+          (Array.isArray(data) ? data : []);
+
+        if (Array.isArray(boardsList) && boardsList.length > 0) {
+          const parsed = z.array(WeeekBoardSchema).parse(boardsList);
+          for (const b of parsed) {
+            if (!seenIds.has(b.id)) {
+              seenIds.add(b.id);
+              allBoards.push(b);
+            }
+          }
+          if (allBoards.length > 0) break;
+        }
+      } catch {
+        // Пробуем следующий эндпоинт
+      }
+    }
+
+    return allBoards;
+  }
+
+  /**
+   * Получение списка колонок канбан-доски проекта WEEEK через API
+   */
+  async getBoardColumns(
+    options: { projectId?: string; boardId?: string } = {},
+  ): Promise<WeeekBoardColumn[]> {
+    const allColumns: WeeekBoardColumn[] = [];
+    const seenColumnIds = new Set<string>();
+
+    const addColumns = (cols: unknown[]) => {
+      try {
+        const parsed = z.array(WeeekBoardColumnSchema).parse(cols);
+        for (const col of parsed) {
+          if (!seenColumnIds.has(col.id)) {
+            seenColumnIds.add(col.id);
+            allColumns.push(col);
+          }
+        }
+      } catch {
+        // Игнорируем ошибки парсинга невалидных элементов
+      }
+    };
+
+    // 1. Если передан конкретный boardId, запрашиваем напрямую
+    if (options.boardId) {
+      const endpoints = [
+        `/tm/board-columns?boardId=${options.boardId}`,
+        `/tm/boards/${options.boardId}/columns`,
+        `/ws/board-columns?boardId=${options.boardId}`,
+      ];
+      for (const ep of endpoints) {
+        try {
+          const data = await this.request<Record<string, unknown>>(ep);
+          const list =
+            (data as { boardColumns?: unknown[] })?.boardColumns ||
+            (data as { columns?: unknown[] })?.columns ||
+            (data as { data?: unknown[] })?.data ||
+            (Array.isArray(data) ? data : []);
+          if (Array.isArray(list) && list.length > 0) {
+            addColumns(list);
+            break;
+          }
+        } catch {
+          // Пробуем следующий
+        }
+      }
+    }
+
+    // 2. Получаем доски проекта или рабочего пространства и опрашиваем каждую
+    let boards: WeeekBoard[] = [];
+    try {
+      boards = await this.getBoards({ projectId: options.projectId });
+    } catch {
+      // Игнорируем
+    }
+
+    for (const board of boards) {
+      const endpoints = [
+        `/tm/board-columns?boardId=${board.id}`,
+        `/tm/boards/${board.id}/columns`,
+        `/ws/board-columns?boardId=${board.id}`,
+      ];
+
+      for (const ep of endpoints) {
+        try {
+          const data = await this.request<Record<string, unknown>>(ep);
+          const list =
+            (data as { boardColumns?: unknown[] })?.boardColumns ||
+            (data as { columns?: unknown[] })?.columns ||
+            (data as { data?: unknown[] })?.data ||
+            (Array.isArray(data) ? data : []);
+
+          if (Array.isArray(list) && list.length > 0) {
+            addColumns(list);
+            break;
+          }
+        } catch {
+          // Пробуем следующий
+        }
+      }
+    }
+
+    // 3. Также пробуем общие эндпоинты колонок и статусов WEEEK
+    const genericEndpoints = [
+      options.projectId ? `/tm/board-columns?projectId=${options.projectId}` : null,
+      options.projectId ? `/tm/projects/${options.projectId}/columns` : null,
+      options.projectId ? `/tm/statuses?projectId=${options.projectId}` : null,
+      '/tm/board-columns',
+      '/ws/board-columns',
+      '/tm/statuses',
+      '/ws/statuses',
+    ].filter(Boolean) as string[];
+
+    for (const ep of genericEndpoints) {
+      try {
+        const data = await this.request<Record<string, unknown>>(ep);
+        const list =
+          (data as { boardColumns?: unknown[] })?.boardColumns ||
+          (data as { columns?: unknown[] })?.columns ||
+          (data as { statuses?: unknown[] })?.statuses ||
+          (data as { data?: unknown[] })?.data ||
+          (Array.isArray(data) ? data : []);
+
+        if (Array.isArray(list) && list.length > 0) {
+          addColumns(list);
+        }
+      } catch {
+        // Пробуем следующий
+      }
+    }
+
+    logger.debug(tf('logs.weeekClient.columnsLoaded', allColumns.length));
+    return allColumns;
+  }
+
+  /**
+   * Получение списка документов базы знаний (Knowledge Base) WEEEK
+   */
+  async getDocuments(options: { projectId?: string } = {}): Promise<WeeekDocument[]> {
+    const endpoints = [
+      options.projectId ? `/ws/docs?projectId=${options.projectId}` : null,
+      options.projectId ? `/tm/docs?projectId=${options.projectId}` : null,
+      options.projectId ? `/kb/articles?projectId=${options.projectId}` : null,
+      options.projectId ? `/kb/documents?projectId=${options.projectId}` : null,
+      options.projectId ? `/ws/kb/articles?projectId=${options.projectId}` : null,
+      options.projectId ? `/ws/articles?projectId=${options.projectId}` : null,
+      '/ws/docs',
+      '/tm/docs',
+      '/docs',
+      '/kb/articles',
+      '/kb/documents',
+      '/ws/kb/articles',
+      '/ws/articles',
+      '/articles',
+      '/ws/kb',
+      '/kb',
+      '/kb/trees',
+      '/kb/folders',
+      '/ws/notes',
+      '/notes',
+    ].filter(Boolean) as string[];
+
+    const allDocs: WeeekDocument[] = [];
+    const seenIds = new Set<string>();
+
+    const extractItemsRecursively = (data: unknown): unknown[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) {
+        let items: unknown[] = [];
+        for (const it of data) {
+          if (it && typeof it === 'object') {
+            const obj = it as Record<string, unknown>;
+            if (
+              'title' in obj ||
+              'name' in obj ||
+              'content' in obj ||
+              'body' in obj ||
+              'articleId' in obj ||
+              'uuid' in obj ||
+              'id' in obj
+            ) {
+              items.push(obj);
+            }
+            if (Array.isArray(obj.children)) {
+              items = items.concat(extractItemsRecursively(obj.children));
+            }
+            if (Array.isArray(obj.articles)) {
+              items = items.concat(extractItemsRecursively(obj.articles));
+            }
+            if (Array.isArray(obj.docs)) {
+              items = items.concat(extractItemsRecursively(obj.docs));
+            }
+            if (Array.isArray(obj.documents)) {
+              items = items.concat(extractItemsRecursively(obj.documents));
+            }
+          }
+        }
+        return items;
+      }
+      if (typeof data === 'object' && data !== null) {
+        const obj = data as Record<string, unknown>;
+        const list =
+          obj.documents ||
+          obj.articles ||
+          obj.docs ||
+          obj.notes ||
+          obj.trees ||
+          obj.folders ||
+          obj.items ||
+          obj.data;
+
+        if (list) {
+          return extractItemsRecursively(list);
+        }
+      }
+      return [];
+    };
+
+    for (const endpoint of endpoints) {
+      try {
+        const data = await this.request<Record<string, unknown>>(endpoint);
+        const extracted = extractItemsRecursively(data);
+
+        if (extracted.length > 0) {
+          for (const item of extracted) {
+            try {
+              const parsed = WeeekDocumentSchema.parse(item);
+              if (!seenIds.has(parsed.id)) {
+                seenIds.add(parsed.id);
+                allDocs.push(parsed);
+              }
+            } catch {
+              // Игнорируем некорректные элементы
+            }
+          }
+        }
+      } catch {
+        // Пробуем следующий эндпоинт
+      }
+    }
+
+    logger.debug(tf('logs.weeekClient.docsLoaded', allDocs.length));
+    return allDocs;
   }
 
   /**

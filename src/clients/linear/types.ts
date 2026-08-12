@@ -18,6 +18,22 @@ export interface LinearWorkflowState {
   position?: number;
 }
 
+export interface CreateWorkflowStateInput {
+  teamId: string;
+  name: string;
+  type: 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled' | string;
+  color?: string;
+  description?: string;
+  position?: number;
+}
+
+export interface UpdateWorkflowStateInput {
+  name?: string;
+  color?: string;
+  description?: string;
+  position?: number;
+}
+
 export interface LinearUser {
   id: string;
   name: string;
@@ -31,6 +47,22 @@ export interface LinearProject {
   name: string;
   description?: string | null;
   state?: string;
+}
+
+export interface LinearDocument {
+  id: string;
+  title: string;
+  content?: string | null;
+  projectId?: string | null;
+}
+
+export interface CreateDocumentInput {
+  title: string;
+  content?: string;
+  projectId?: string;
+  teamId?: string;
+  icon?: string;
+  color?: string;
 }
 
 export interface LinearLabel {
@@ -79,10 +111,13 @@ export interface CreateIssueInput {
 }
 
 export interface UpdateIssueInput {
-  parentId?: string;
+  title?: string;
+  description?: string;
+  priority?: number;
   stateId?: string;
+  dueDate?: string;
   assigneeId?: string;
   labelIds?: string[];
-  dueDate?: string;
-  description?: string;
+  projectId?: string;
+  parentId?: string;
 }

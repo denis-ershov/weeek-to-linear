@@ -2,7 +2,7 @@
  * Типы данных и DTO для веб-сервера и SSE-стриминга сервиса weeek-to-linear.
  */
 
-import type { MigrationSummary } from '../core/types.js';
+import type { MigrationSummary, WatcherStrategy, SyncStrategy } from '../core/types.js';
 
 export interface ServerStatusResponse {
   ok: boolean;
@@ -49,6 +49,15 @@ export interface StartMigrationRequest {
   force?: boolean;
   includeCompleted?: boolean;
   includeDeleted?: boolean;
+  includeDocuments?: boolean;
+  createMissingStates?: boolean;
+  renameMatchedStates?: boolean;
+  recreateAllColumns?: boolean;
+  boardColumnMapping?: Record<string, string>;
+  userMapping?: Record<string, string>;
+  watcherStrategy?: WatcherStrategy;
+  globalWatcherUserId?: string;
+  syncStrategy?: SyncStrategy;
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
 }
 
@@ -68,7 +77,7 @@ export interface SseEventData {
   type: SseEventType;
   stageNumber?: number;
   stageName?: string;
-  progressType?: 'projects' | 'labels' | 'tasks';
+  progressType?: 'projects' | 'labels' | 'tasks' | 'documents';
   current?: number;
   total?: number;
   itemName?: string;

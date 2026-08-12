@@ -13,8 +13,9 @@ describe('core/reporter', () => {
     finishedAt: '2026-08-12T10:01:00.000Z',
     durationSeconds: 60,
     projects: { total: 2, created: 2, skipped: 0, failed: 0 },
-    tasks: { total: 10, created: 10, skipped: 0, failed: 0, parentsResolved: 3, parentsFailed: 0 },
+    tasks: { total: 10, created: 10, updated: 0, skipped: 0, failed: 0, parentsResolved: 3, parentsFailed: 0 },
     labels: { total: 5, created: 3, reused: 2 },
+    documents: { total: 2, created: 2, skipped: 0, failed: 0 },
     warnings: ['Внимание: пользователь не найден'],
     errors: [],
   };
@@ -28,6 +29,7 @@ describe('core/reporter', () => {
     projects: { '10': { linearProjectId: 'lin_10', name: 'Project Alpha', migratedAt: '2026-08-12T10:00:00.000Z' } },
     labels: { 'tag_1': { linearLabelId: 'lbl_1', name: 'Bug' } },
     users: { 'denis@example.com': { linearUserId: 'usr_1', name: 'Denis' } },
+    documents: { 'doc_1': { linearDocId: 'ldoc_1', title: 'Architecture Note', migratedAt: '2026-08-12T10:00:00.000Z' } },
     tasks: { '101': { linearIssueId: 'iss_101', linearIssueKey: 'ENG-101', title: 'Task 1', migratedAt: '2026-08-12T10:00:00.000Z' } },
   };
 
@@ -42,7 +44,9 @@ describe('core/reporter', () => {
 
     const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
     expect(parsed.summary.projects.total).toBe(2);
+    expect(parsed.summary.documents.total).toBe(2);
     expect(parsed.mapping.projects['10']?.name).toBe('Project Alpha');
+    expect(parsed.mapping.documents['doc_1']?.title).toBe('Architecture Note');
   });
 
   it('должен генерировать читаемый Markdown отчет со статистикой', () => {
@@ -53,6 +57,7 @@ describe('core/reporter', () => {
     expect(md).toContain('# Отчет о миграции WEEEK → Linear');
     expect(md).toContain('Project Alpha');
     expect(md).toContain('ENG-101');
+    expect(md).toContain('Architecture Note');
     expect(md).toContain('Внимание: пользователь не найден');
   });
 });

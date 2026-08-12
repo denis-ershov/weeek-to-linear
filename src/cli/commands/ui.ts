@@ -3,6 +3,7 @@ import { exec } from 'node:child_process';
 import { WebServer } from '../../server/server.js';
 import { theme, printBanner } from '../ui/theme.js';
 import { logger } from '../../utils/logger.js';
+import { t, tf } from '../../i18n/index.js';
 
 /**
  * Кроссплатформенное открытие URL в браузере
@@ -17,14 +18,14 @@ function openBrowser(url: string): void {
 
   exec(`${start} ${url}`, err => {
     if (err) {
-      logger.debug(`Не удалось автоматически открыть браузер: ${err.message}`);
+      logger.debug(tf('logs.ui.browserOpenError', err.message));
     }
   });
 }
 
 export async function uiCommand(options: { port?: string | number; open?: boolean }): Promise<void> {
   printBanner();
-  p.intro(theme.title('Запуск Web UI для управления миграцией'));
+  p.intro(theme.title(t('cli.ui.intro')));
 
   const requestedPort = options.port ? Number(options.port) : 3456;
   const shouldOpen = options.open !== false;
@@ -35,19 +36,19 @@ export async function uiCommand(options: { port?: string | number; open?: boolea
     const { port, url } = await server.start();
 
     p.note(
-      `Веб-интерфейс запущен и доступен по адресу:\n\n` +
+      `${t('cli.ui.serverNote')}\n\n` +
         `  ${theme.primary.bold(url)}\n\n` +
-        `Для остановки сервера нажмите ${theme.dim('Ctrl + C')}`,
-      theme.successBadge(`СЕРВЕР АКТИВЕН НА ПОРТУ ${port}`),
+        `${t('cli.ui.stopHint')} ${theme.dim('Ctrl + C')}`,
+      theme.successBadge(`${t('cli.ui.serverBadge')} ${port}`),
     );
 
     if (shouldOpen) {
       openBrowser(url);
     }
 
-    // Обработка корректного завершения
+    // Корректное завершение
     const cleanup = async () => {
-      p.log.info(theme.dim('\nОстановка веб-сервера...'));
+      p.log.info(theme.dim(`\n${t('cli.ui.stopping')}`));
       await server.stop();
       process.exit(0);
     };
@@ -55,7 +56,7 @@ export async function uiCommand(options: { port?: string | number; open?: boolea
     process.on('SIGINT', cleanup);
     process.on('SIGTERM', cleanup);
   } catch (err) {
-    p.log.error(theme.error(`Ошибка запуска веб-сервера: ${(err as Error).message}`));
+    p.log.error(theme.error(`${t('cli.ui.startError')} ${(err as Error).message}`));
     process.exit(1);
   }
 }

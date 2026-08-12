@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
+import { tf } from '../i18n/index.js';
 import type { MigrationState } from './types.js';
 
 export class StateManager {
@@ -27,6 +28,8 @@ export class StateManager {
       projects: {},
       labels: {},
       users: {},
+      boardColumns: {},
+      documents: {},
       tasks: {},
     };
   }
@@ -49,12 +52,14 @@ export class StateManager {
           projects: parsed.projects || {},
           labels: parsed.labels || {},
           users: parsed.users || {},
+          boardColumns: parsed.boardColumns || {},
+          documents: parsed.documents || {},
           tasks: parsed.tasks || {},
         };
         return this.state;
       }
     } catch (err) {
-      logger.warn(`Не удалось прочитать файл состояния ${this.filePath}: ${(err as Error).message}. Инициализируется пустое состояние.`);
+      logger.warn(tf('logs.state.readError', this.filePath, (err as Error).message));
     }
 
     this.state = this.createEmptyState();
@@ -78,7 +83,7 @@ export class StateManager {
       fs.writeFileSync(tmpPath, jsonContent, 'utf-8');
       fs.renameSync(tmpPath, this.filePath);
     } catch (err) {
-      logger.error(`Ошибка при сохранении файла состояния ${this.filePath}: ${(err as Error).message}`);
+      logger.error(tf('logs.state.saveError', this.filePath, (err as Error).message));
     }
   }
 
@@ -108,10 +113,29 @@ export class StateManager {
     this.saveState();
   }
 
-  public recordUser(weeekEmail: string, linearUserId: string, name: string): void {
-    this.state.users[weeekEmail.toLowerCase()] = {
+  public recordUser(weeekEmailOrId: string, linearUserId: string, name: string): void {
+    this.state.users[weeekEmailOrId.toLowerCase()] = {
       linearUserId,
       name,
+    };
+    this.saveState();
+  }
+
+  public recordBoardColumn(weeekColumnId: string, linearStateId: string, name: string): void {
+    if (!this.state.boardColumns) this.state.boardColumns = {};
+    this.state.boardColumns[String(weeekColumnId)] = {
+      linearStateId,
+      name,
+    };
+    this.saveState();
+  }
+
+  public recordDocument(weeekDocId: string, linearDocId: string, title: string): void {
+    if (!this.state.documents) this.state.documents = {};
+    this.state.documents[String(weeekDocId)] = {
+      linearDocId,
+      title,
+      migratedAt: new Date().toISOString(),
     };
     this.saveState();
   }
@@ -145,6 +169,10 @@ export class StateManager {
     return Boolean(this.state.labels[String(weeekTagId)]);
   }
 
+  public isDocumentMigrated(weeekDocId: string): boolean {
+    return Boolean(this.state.documents?.[String(weeekDocId)]);
+  }
+
   public getLinearProjectId(weeekProjectId: string): string | undefined {
     return this.state.projects[String(weeekProjectId)]?.linearProjectId;
   }
@@ -155,6 +183,14 @@ export class StateManager {
 
   public getLinearLabelId(weeekTagId: string): string | undefined {
     return this.state.labels[String(weeekTagId)]?.linearLabelId;
+  }
+
+  public getLinearDocumentId(weeekDocId: string): string | undefined {
+    return this.state.documents?.[String(weeekDocId)]?.linearDocId;
+  }
+
+  public getLinearStateIdForColumn(weeekColumnId: string): string | undefined {
+    return this.state.boardColumns?.[String(weeekColumnId)]?.linearStateId;
   }
 
   public clear(): void {

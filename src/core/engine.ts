@@ -4,21 +4,28 @@ import { StateManager } from './state.js';
 import { PreflightValidator } from './validator.js';
 import { RelationshipResolver } from './resolver.js';
 import { ReportGenerator } from './reporter.js';
-import { mapProject, mapTask, type MappingContext } from './mapper.js';
+import {
+  mapProject,
+  mapTask,
+  guessWorkflowStateType,
+  type MappingContext,
+} from './mapper.js';
 import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
+import { tf } from '../i18n/index.js';
+import { normalizeDocumentContentToMarkdown } from '../utils/markdown.js';
 import type {
   MigrationOptions,
   MigrationSummary,
   PreflightValidationResult,
 } from './types.js';
-import type { WeeekTask } from '../clients/weeek/types.js';
+import type { WeeekTask, WeeekDocument, WeeekBoardColumn } from '../clients/weeek/types.js';
 
 export interface MigrationEngineHooks {
   onStage?: (stageNumber: number, stageName: string) => void;
-  onProgress?: (type: 'projects' | 'labels' | 'tasks', current: number, total: number, itemName?: string) => void;
+  onProgress?: (type: 'projects' | 'labels' | 'tasks' | 'documents', current: number, total: number, itemName?: string) => void;
   onWarning?: (message: string) => void;
-  onError?: (error: { entityType: 'project' | 'task' | 'label' | 'relation' | 'auth'; entityId: string; message: string }) => void;
+  onError?: (error: { entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state'; entityId: string; message: string }) => void;
 }
 
 export class MigrationEngine {
@@ -72,8 +79,9 @@ export class MigrationEngine {
       finishedAt: '',
       durationSeconds: 0,
       projects: { total: 0, created: 0, skipped: 0, failed: 0 },
-      tasks: { total: 0, created: 0, skipped: 0, failed: 0, parentsResolved: 0, parentsFailed: 0 },
+      tasks: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0, parentsResolved: 0, parentsFailed: 0 },
       labels: { total: 0, created: 0, reused: 0 },
+      documents: { total: 0, created: 0, skipped: 0, failed: 0 },
       warnings: [],
       errors: [],
     };
@@ -90,8 +98,8 @@ export class MigrationEngine {
       this.linearClient.getViewer(),
     ]);
 
-    logger.info(`WEEEK пользователь: ${weeekMe.name} (${weeekMe.email})`);
-    logger.info(`Linear организация: ${linearViewer.organizationName || linearViewer.name}`);
+    logger.info(tf('logs.engine.weeekUser', weeekMe.name || '', weeekMe.email));
+    logger.info(tf('logs.engine.linearOrg', linearViewer.organizationName || linearViewer.name));
 
     // Получение целевой команды Linear
     const linearTeams = await this.linearClient.getTeams();
@@ -110,7 +118,7 @@ export class MigrationEngine {
     this.stateManager.setTargetTeamId(targetTeam.id);
 
     // 2-5. Загрузка данных WEEEK
-    this.hooks.onStage?.(2, 'Загрузка проектов и метаданных из WEEEK');
+    this.hooks.onStage?.(2, 'Загрузка проектов, колонок и метаданных из WEEEK');
     const [allWeeekProjects, weeekUsers, weeekTags] = await Promise.all([
       options.weeekProjectId
         ? [await this.weeekClient.getProject(options.weeekProjectId)]
@@ -137,25 +145,63 @@ export class MigrationEngine {
         );
         if (matched) {
           this.stateManager.recordUser(wUser.email, matched.id, matched.name);
+          this.stateManager.recordUser(wUser.id, matched.id, matched.name);
         }
       }
     }
 
-    // 10. Загрузка всех задач WEEEK
-    this.hooks.onStage?.(4, 'Загрузка задач из WEEEK');
+    // 10. Загрузка задач, колонок и документов WEEEK
+    this.hooks.onStage?.(4, 'Загрузка задач, колонок и документов из WEEEK');
     const allWeeekTasks: WeeekTask[] = [];
+    const allWeeekDocs: WeeekDocument[] = [];
+    const allWeeekColumns: WeeekBoardColumn[] = [];
+    const seenDocIds = new Set<string>();
+
+    // 10.1 Загрузка документов рабочего пространства (Knowledge Base)
+    if (options.includeDocuments !== false) {
+      try {
+        const wsDocs = await this.weeekClient.getDocuments();
+        for (const d of wsDocs) {
+          if (!seenDocIds.has(d.id)) {
+            seenDocIds.add(d.id);
+            allWeeekDocs.push(d);
+          }
+        }
+      } catch (err) {
+        logger.warn(
+          { error: (err as Error).message },
+          'Не удалось загрузить документы рабочего пространства WEEEK',
+        );
+      }
+    }
+
     for (const project of allWeeekProjects) {
-      const tasks = await this.weeekClient.getTasks({
-        projectId: project.id,
-        includeCompleted: options.includeCompleted ?? true,
-        includeDeleted: options.includeDeleted ?? false,
-      });
+      const [tasks, docs, cols] = await Promise.all([
+        this.weeekClient.getTasks({
+          projectId: project.id,
+          includeCompleted: options.includeCompleted ?? true,
+          includeDeleted: options.includeDeleted ?? false,
+        }),
+        options.includeDocuments !== false
+          ? this.weeekClient.getDocuments({ projectId: project.id }).catch(() => [])
+          : Promise.resolve([]),
+        this.weeekClient.getBoardColumns({ projectId: project.id }).catch(() => []),
+      ]);
+
       allWeeekTasks.push(...tasks);
+      for (const d of docs) {
+        if (!seenDocIds.has(d.id)) {
+          seenDocIds.add(d.id);
+          allWeeekDocs.push(d);
+        }
+      }
+      allWeeekColumns.push(...cols);
     }
 
     summary.projects.total = allWeeekProjects.length;
     summary.tasks.total = allWeeekTasks.length;
     summary.labels.total = weeekTags.length;
+    summary.documents.total = allWeeekDocs.length;
 
     // Режим DRY RUN: расчет без создания сущностей
     if (options.dryRun) {
@@ -168,6 +214,7 @@ export class MigrationEngine {
 
       summary.projects.created = allWeeekProjects.length;
       summary.tasks.created = allWeeekTasks.length;
+      summary.documents.created = allWeeekDocs.length;
 
       summary.finishedAt = new Date().toISOString();
       summary.durationSeconds = (Date.now() - startTimeMs) / 1000;
@@ -221,8 +268,50 @@ export class MigrationEngine {
       }
     }
 
-    // 12. Создание меток (Labels)
-    this.hooks.onStage?.(7, 'Перенос меток и тегов в Linear');
+    // 12. Создание документов базы знаний (Knowledge Base)
+    if (options.includeDocuments !== false && allWeeekDocs.length > 0) {
+      this.hooks.onStage?.(7, 'Перенос документов базы знаний в Linear');
+      let docIndex = 0;
+      for (const wDoc of allWeeekDocs) {
+        docIndex++;
+        this.hooks.onProgress?.('documents', docIndex, allWeeekDocs.length, wDoc.title);
+
+        if (this.stateManager.isDocumentMigrated(wDoc.id)) {
+          summary.documents.skipped++;
+          continue;
+        }
+
+        const linearProjectId = wDoc.projectId
+          ? this.stateManager.getLinearProjectId(wDoc.projectId)
+          : undefined;
+
+        try {
+          const markdownContent = normalizeDocumentContentToMarkdown(wDoc.content);
+          const createdDoc = await this.linearClient.createDocument({
+            title: wDoc.title.trim() || 'Документ без названия',
+            content: markdownContent,
+            projectId: linearProjectId,
+            teamId: targetTeam.id,
+          });
+
+          this.stateManager.recordDocument(wDoc.id, createdDoc.id, wDoc.title);
+          summary.documents.created++;
+        } catch (err) {
+          summary.documents.failed++;
+          const errorRecord = {
+            entityType: 'document' as const,
+            entityId: wDoc.id,
+            message: (err as Error).message,
+            recoverable: true,
+          };
+          summary.errors.push(errorRecord);
+          this.hooks.onError?.(errorRecord);
+        }
+      }
+    }
+
+    // 13. Создание меток (Labels)
+    this.hooks.onStage?.(8, 'Перенос меток и тегов в Linear');
     const linearLabelsByName = new Map<string, string>();
     for (const l of existingLinearLabels) {
       linearLabelsByName.set(l.name.trim().toLowerCase(), l.id);
@@ -251,7 +340,7 @@ export class MigrationEngine {
         this.stateManager.recordLabel(wTag.id, createdLabel.id, createdLabel.name);
         summary.labels.created++;
       } catch (err) {
-        logger.warn(`Не удалось создать метку "${wTag.title}": ${(err as Error).message}`);
+        logger.warn(tf('logs.engine.labelCreateError', wTag.title, (err as Error).message));
       }
     }
 
@@ -269,8 +358,126 @@ export class MigrationEngine {
       }
     }
 
-    // 13-15. Разрешение иерархии и перенос задач
-    this.hooks.onStage?.(8, 'Топологическая сортировка задач и подзадач');
+    // Создание, переименование или полное пересоздание Workflow состояний (статусов) в Linear
+    const activeBoardColumnMapping: Record<string, string> = { ...(options.boardColumnMapping || {}) };
+
+    if (!options.dryRun) {
+      // 1. Режим полной замены структуры колонок (recreateAllColumns)
+      if (options.recreateAllColumns && allWeeekColumns.length > 0) {
+        const createdOrMatchedIds = new Set<string>();
+
+        for (const col of allWeeekColumns) {
+          const determinedType = guessWorkflowStateType(col.name);
+          const existing = workflowStates.find(
+            s => s.name.toLowerCase() === col.name.trim().toLowerCase(),
+          );
+
+          if (existing) {
+            activeBoardColumnMapping[col.id] = existing.id;
+            createdOrMatchedIds.add(existing.id);
+            this.stateManager.recordBoardColumn(col.id, existing.id, existing.name);
+          } else {
+            try {
+              const createdState = await this.linearClient.createWorkflowState({
+                teamId: targetTeam.id,
+                name: col.name.trim(),
+                type: determinedType,
+                color: col.color || undefined,
+              });
+              workflowStates.push(createdState);
+              activeBoardColumnMapping[col.id] = createdState.id;
+              createdOrMatchedIds.add(createdState.id);
+              this.stateManager.recordBoardColumn(col.id, createdState.id, createdState.name);
+              logger.info(tf('logs.engine.stateCreated', createdState.name, createdState.type));
+            } catch (err) {
+              logger.warn(tf('logs.engine.stateCreateError', col.name, (err as Error).message));
+            }
+          }
+        }
+
+        // Попытка архивировать лишние дефолтные статусы, которые не вошли в WEEEK
+        for (const st of [...workflowStates]) {
+          if (!createdOrMatchedIds.has(st.id)) {
+            try {
+              await this.linearClient.archiveWorkflowState(st.id);
+              logger.info(tf('logs.engine.stateArchived', st.name));
+            } catch {
+              // Игнорируем, если Linear требует сохранения хотя бы одного статуса данного типа
+            }
+          }
+        }
+      } else {
+        // 2. Обычный режим / создание недостающих статусов
+        if (options.createMissingStates || Object.values(activeBoardColumnMapping).includes('__create_new__')) {
+          for (const col of allWeeekColumns) {
+            const explicitVal = activeBoardColumnMapping[col.id];
+            const shouldCreate =
+              explicitVal === '__create_new__' ||
+              (options.createMissingStates && (!explicitVal || explicitVal === ''));
+
+            if (shouldCreate) {
+              const existing = workflowStates.find(
+                s => s.name.toLowerCase() === col.name.trim().toLowerCase(),
+              );
+
+              if (existing) {
+                activeBoardColumnMapping[col.id] = existing.id;
+                this.stateManager.recordBoardColumn(col.id, existing.id, existing.name);
+              } else {
+                try {
+                  const determinedType = guessWorkflowStateType(col.name);
+                  const createdState = await this.linearClient.createWorkflowState({
+                    teamId: targetTeam.id,
+                    name: col.name.trim(),
+                    type: determinedType,
+                    color: col.color || undefined,
+                  });
+                  workflowStates.push(createdState);
+                  activeBoardColumnMapping[col.id] = createdState.id;
+                  this.stateManager.recordBoardColumn(col.id, createdState.id, createdState.name);
+                  logger.info(tf('logs.engine.stateCreatedNew', createdState.name, createdState.type, col.name));
+                } catch (err) {
+                  logger.warn(tf('logs.engine.stateCreateNewError', col.name, (err as Error).message));
+                  const errorRecord = {
+                    entityType: 'state' as const,
+                    entityId: col.id,
+                    message: `Не удалось создать статус Linear для колонки "${col.name}": ${(err as Error).message}`,
+                    recoverable: true,
+                  };
+                  summary.errors.push(errorRecord);
+                  this.hooks.onError?.(errorRecord);
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Переименование сопоставленных статусов в формат WEEEK (renameMatchedStates)
+        if (options.renameMatchedStates) {
+          for (const col of allWeeekColumns) {
+            const mappedStateId = activeBoardColumnMapping[col.id];
+            if (mappedStateId && mappedStateId !== '__create_new__') {
+              const targetState = workflowStates.find(s => s.id === mappedStateId);
+              if (targetState && targetState.name.trim() !== col.name.trim()) {
+                try {
+                  const updatedState = await this.linearClient.updateWorkflowState(mappedStateId, {
+                    name: col.name.trim(),
+                    color: col.color || undefined,
+                  });
+                  targetState.name = updatedState.name;
+                  logger.info(tf('logs.engine.stateRenamed', targetState.name, col.name.trim()));
+                } catch (err) {
+                  logger.warn(tf('logs.engine.stateRenameError', mappedStateId, (err as Error).message));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 14-16. Разрешение иерархии и перенос задач
+    this.hooks.onStage?.(9, 'Топологическая сортировка задач и подзадач');
     const { rootTasks, nestedTasksByLevel } = RelationshipResolver.groupTasksByHierarchy(allWeeekTasks);
 
     const mappingContext: MappingContext = {
@@ -279,21 +486,24 @@ export class MigrationEngine {
       linearUsers,
       linearLabelsByName,
       tasksStateMap: this.stateManager.getState().tasks,
+      boardColumnMapping: activeBoardColumnMapping,
+      userMapping: options.userMapping,
+      watcherStrategy: options.watcherStrategy || 'none',
+      globalWatcherUserId: options.globalWatcherUserId,
       unmatchedUserStrategy: options.unmatchedUserStrategy || 'unassigned',
     };
 
     let processedTasksCount = 0;
     const totalTasksToMigrate = allWeeekTasks.length;
+    const syncStrategy = options.syncStrategy || 'skip';
 
     // Вспомогательная функция миграции одной задачи
     const migrateSingleTask = async (task: WeeekTask) => {
       processedTasksCount++;
       this.hooks.onProgress?.('tasks', processedTasksCount, totalTasksToMigrate, task.title);
 
-      if (this.stateManager.isTaskMigrated(task.id)) {
-        summary.tasks.skipped++;
-        return;
-      }
+      const isMigrated = this.stateManager.isTaskMigrated(task.id);
+      const existingIssueId = this.stateManager.getLinearTaskId(task.id);
 
       // Определяем Linear Project ID
       const linearProjectId = task.projectId
@@ -306,7 +516,7 @@ export class MigrationEngine {
         tasksStateMap: this.stateManager.getState().tasks,
       };
 
-      const { createInput, warnings, skip } = mapTask(task, taskContext);
+      const { createInput, subscriberUserIds, warnings, skip } = mapTask(task, taskContext);
       if (warnings.length > 0) {
         summary.warnings.push(...warnings);
         for (const w of warnings) this.hooks.onWarning?.(w);
@@ -315,6 +525,41 @@ export class MigrationEngine {
       if (skip) {
         summary.tasks.skipped++;
         return;
+      }
+
+      // Обработка уже перенесенных задач в зависимости от syncStrategy
+      if (isMigrated && existingIssueId) {
+        if (syncStrategy === 'skip') {
+          summary.tasks.skipped++;
+          return;
+        }
+
+        try {
+          if (syncStrategy === 'update_all') {
+            await this.linearClient.updateIssue(existingIssueId, {
+              title: createInput.title,
+              description: createInput.description,
+              priority: createInput.priority,
+              stateId: createInput.stateId,
+              dueDate: createInput.dueDate,
+              assigneeId: createInput.assigneeId,
+              labelIds: createInput.labelIds,
+              projectId: createInput.projectId,
+              parentId: createInput.parentId,
+            });
+            summary.tasks.updated++;
+          } else if (syncStrategy === 'update_status_only') {
+            await this.linearClient.updateIssue(existingIssueId, {
+              stateId: createInput.stateId,
+              dueDate: createInput.dueDate,
+              priority: createInput.priority,
+            });
+            summary.tasks.updated++;
+          }
+          return;
+        } catch (err) {
+          logger.warn(tf('logs.engine.taskUpdateError', task.id, (err as Error).message));
+        }
       }
 
       try {
@@ -331,6 +576,17 @@ export class MigrationEngine {
         if (task.parentId) {
           summary.tasks.parentsResolved++;
         }
+
+        // Подписка наблюдателей (Subscribers)
+        if (subscriberUserIds.length > 0) {
+          for (const subId of subscriberUserIds) {
+            try {
+              await this.linearClient.subscribeUser(createdIssue.id, subId);
+            } catch {
+              // Игнорируем ошибку добавления наблюдателя
+            }
+          }
+        }
       } catch (err) {
         summary.tasks.failed++;
         const errorRecord = {
@@ -344,14 +600,14 @@ export class MigrationEngine {
       }
     };
 
-    // 13. Фаза 1: Перенос корневых задач
-    this.hooks.onStage?.(9, 'Создание корневых задач в Linear');
+    // 14. Фаза 1: Перенос корневых задач
+    this.hooks.onStage?.(10, 'Создание корневых задач в Linear');
     for (const rootTask of rootTasks) {
       await migrateSingleTask(rootTask);
     }
 
-    // 14. Фаза 2: Перенос подзадач по уровням вложенности
-    this.hooks.onStage?.(10, 'Создание подзадач с сохранением связей');
+    // 15. Фаза 2: Перенос подзадач по уровням вложенности
+    this.hooks.onStage?.(11, 'Создание подзадач с сохранением связей');
     for (const levelTasks of nestedTasksByLevel) {
       for (const nestedTask of levelTasks) {
         await migrateSingleTask(nestedTask);
@@ -359,7 +615,7 @@ export class MigrationEngine {
     }
 
     // 20. Генерация отчетов
-    this.hooks.onStage?.(11, 'Генерация отчетов миграции');
+    this.hooks.onStage?.(12, 'Генерация отчетов миграции');
     summary.finishedAt = new Date().toISOString();
     summary.durationSeconds = (Date.now() - startTimeMs) / 1000;
 

@@ -1,5 +1,6 @@
 import pRetry, { type Options as PRetryOptions } from 'p-retry';
 import { logger } from './logger.js';
+import { tf } from '../i18n/index.js';
 
 export interface RetryOptions {
   retries?: number;
@@ -85,18 +86,18 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
     onFailedAttempt: error => {
       // Если ошибка фатальная (401, 403 и т.д.), прекращаем retry
       if (error instanceof ApiError && error.isFatal) {
-        logger.debug(`Фатальная ошибка API: ${error.message}. Повторные попытки остановлены.`);
+        logger.debug(tf('logs.retry.fatalError', error.message));
         throw error;
       }
 
       const retryAfter = error instanceof ApiError ? getRetryAfterMs(error.headers) : null;
       if (retryAfter) {
         logger.warn(
-          `Получен HTTP 429 (Rate Limit). Ожидание ${Math.round(retryAfter / 1000)}с согласно Retry-After...`,
+          tf('logs.retry.retrying', error.attemptNumber, error.retriesLeft, Math.round(retryAfter / 1000), error.message),
         );
       } else {
         logger.debug(
-          `Попытка ${error.attemptNumber} не удалась. Осталось попыток: ${error.retriesLeft}. Причина: ${error.message}`,
+          tf('logs.retry.retrying', error.attemptNumber, error.retriesLeft, 0, error.message),
         );
       }
 

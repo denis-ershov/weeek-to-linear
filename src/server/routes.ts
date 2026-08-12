@@ -4,6 +4,7 @@ import path from 'node:path';
 import { CONSTANTS } from '../config/constants.js';
 import { getAppConfig } from '../config/env.js';
 import { WeeekClient } from '../clients/weeek/client.js';
+import type { WeeekBoardColumn, WeeekDocument } from '../clients/weeek/types.js';
 import { LinearClient } from '../clients/linear/client.js';
 import { MigrationEngine } from '../core/engine.js';
 import { StateManager } from '../core/state.js';
@@ -190,6 +191,107 @@ export class ApiRouter {
       return true;
     }
 
+    // 3.1 GET /api/weeek/board-columns
+    if (pathname === '/api/weeek/board-columns' && method === 'GET') {
+      try {
+        const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
+        const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
+        if (!token) {
+          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          return true;
+        }
+        const client = new WeeekClient({ apiToken: token });
+        const allColumns: WeeekBoardColumn[] = [];
+        const seenIds = new Set<string>();
+
+        if (projectIdParam && projectIdParam.includes(',')) {
+          const pIds = projectIdParam.split(',').map(s => s.trim()).filter(Boolean);
+          for (const pid of pIds) {
+            const cols = await client.getBoardColumns({ projectId: pid });
+            for (const c of cols) {
+              if (!seenIds.has(c.id)) {
+                seenIds.add(c.id);
+                allColumns.push(c);
+              }
+            }
+          }
+        } else {
+          const cols = await client.getBoardColumns({ projectId: projectIdParam || undefined });
+          for (const c of cols) {
+            if (!seenIds.has(c.id)) {
+              seenIds.add(c.id);
+              allColumns.push(c);
+            }
+          }
+        }
+
+        this.sendJson(res, 200, { columns: allColumns });
+      } catch (err) {
+        this.sendJson(res, 400, { error: (err as Error).message });
+      }
+      return true;
+    }
+
+    // 3.2 GET /api/weeek/users
+    if (pathname === '/api/weeek/users' && method === 'GET') {
+      try {
+        const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
+        if (!token) {
+          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          return true;
+        }
+        const client = new WeeekClient({ apiToken: token });
+        const users = await client.getUsers();
+        this.sendJson(res, 200, { users });
+      } catch (err) {
+        this.sendJson(res, 400, { error: (err as Error).message });
+      }
+      return true;
+    }
+
+    // 3.3 GET /api/weeek/documents
+    if (pathname === '/api/weeek/documents' && method === 'GET') {
+      try {
+        const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
+        const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
+        if (!token) {
+          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          return true;
+        }
+        const client = new WeeekClient({ apiToken: token });
+        const allDocs: WeeekDocument[] = [];
+        const seenIds = new Set<string>();
+
+        // 1. Документы рабочего пространства
+        const wsDocs = await client.getDocuments();
+        for (const d of wsDocs) {
+          if (!seenIds.has(d.id)) {
+            seenIds.add(d.id);
+            allDocs.push(d);
+          }
+        }
+
+        // 2. Документы выбранных проектов
+        if (projectIdParam) {
+          const pIds = projectIdParam.split(',').map(s => s.trim()).filter(Boolean);
+          for (const pid of pIds) {
+            const pDocs = await client.getDocuments({ projectId: pid });
+            for (const d of pDocs) {
+              if (!seenIds.has(d.id)) {
+                seenIds.add(d.id);
+                allDocs.push(d);
+              }
+            }
+          }
+        }
+
+        this.sendJson(res, 200, { documents: allDocs });
+      } catch (err) {
+        this.sendJson(res, 400, { error: (err as Error).message });
+      }
+      return true;
+    }
+
     // 4. GET /api/linear/teams
     if (pathname === '/api/linear/teams' && method === 'GET') {
       try {
@@ -319,6 +421,15 @@ export class ApiRouter {
               force: body.force,
               includeCompleted: body.includeCompleted ?? true,
               includeDeleted: body.includeDeleted ?? false,
+              includeDocuments: body.includeDocuments ?? true,
+              createMissingStates: body.createMissingStates,
+              renameMatchedStates: body.renameMatchedStates,
+              recreateAllColumns: body.recreateAllColumns,
+              boardColumnMapping: body.boardColumnMapping,
+              userMapping: body.userMapping,
+              watcherStrategy: body.watcherStrategy ?? 'none',
+              globalWatcherUserId: body.globalWatcherUserId,
+              syncStrategy: body.syncStrategy ?? 'skip',
               unmatchedUserStrategy: body.unmatchedUserStrategy ?? 'unassigned',
             });
 

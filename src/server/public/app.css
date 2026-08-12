@@ -668,26 +668,151 @@ input:focus,
 .mapping-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.mapping-row {
+.mapping-row,
+.mapping-item-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
   background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   font-size: 13px;
+  transition: border-color var(--transition-fast);
+}
+
+@media (min-width: 640px) {
+  .mapping-row,
+  .mapping-item-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.mapping-item-card:hover {
+  border-color: var(--border-strong);
 }
 
 .mapping-from {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-weight: 500;
+  min-width: 180px;
 }
 
 .mapping-arrow {
   color: var(--text-muted);
+  display: none;
 }
+
+@media (min-width: 640px) {
+  .mapping-arrow {
+    display: block;
+  }
+}
+
+.mapping-select-wrapper {
+  flex: 1;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .mapping-select-wrapper {
+    max-width: 240px;
+  }
+}
+
+.user-mapping-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+@media (min-width: 640px) {
+  .user-mapping-item {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.user-info-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.user-avatar-mini {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all var(--transition-fast);
+}
+
+.radio-label:hover {
+  border-color: var(--border-strong);
+}
+
+.radio-label input[type="radio"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+}
+
+.skeleton-line {
+  height: 44px;
+  background: linear-gradient(90deg, var(--bg-surface-elevated) 25%, var(--bg-surface-hover) 50%, var(--bg-surface-elevated) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeletonPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.margin-bottom-sm { margin-bottom: var(--space-sm); }
 
 /* ==============================================================================
  * Live Dashboard (Progress, Counters, Console)

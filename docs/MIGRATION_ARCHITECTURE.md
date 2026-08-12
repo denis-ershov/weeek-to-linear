@@ -4,38 +4,42 @@
 
 Движок миграции (`MigrationEngine`) управляет полным жизненным циклом переноса данных из WEEEK в Linear.
 Главные архитектурные требования:
-1. **Идемпотентность**: гарантированное отсутствие дубликатов при повторных запусках.
-2. **Атомарность сохранения состояния**: сохранение маппинга сущностей сразу после успешного создания.
-3. **Корректность иерархии**: 3-фазное разрешение связей родитель-подзадача.
-4. **Режим Dry Run**: валидация и предварительный расчет без побочных эффектов.
-5. **Поддержка возобновления (`--resume`)**.
+1. **Идемпотентность и гибкая синхронизация**: поддержка стратегий повторного запуска (`skip`, `update_all`, `update_status_only`).
+2. **Точный перенос Канбан-досок**: сопоставление кастомных колонок WEEEK (`💡 Важное`, `⏱ Запланировано`, `👾 В работе`, `❓ Тестирование`, `⁉️ Доработать`, `‼️ Закрыто`, `📁 Архив`) с Workflow States Linear.
+3. **Перенос базы знаний (Knowledge Base)**: миграция документов WEEEK в Linear Project Documents.
+4. **Персональный маппинг исполнителей и наблюдателей**: гибкий выбор исполнителя Linear для каждого пользователя WEEEK, а также подписка наблюдателей (`Subscribers`).
+5. **Атомарность сохранения состояния**: сохранение маппинга сущностей сразу после успешного создания.
+6. **Корректность иерархии**: 3-фазное разрешение связей родитель-подзадача.
+7. **Режим Dry Run**: валидация и предварительный расчет без побочных эффектов.
 
 ---
 
-## 2. Схема 20-стадийного конвейера миграции
+## 2. Схема расширенного конвейера миграции
 
 ```
  [1. Authenticate]
         ↓
- [2-5. Load WEEEK Data] (Projects, Tasks, Users, Tags)
+ [2-5. Load WEEEK Data] (Projects, Board Columns, Tasks, Documents, Users, Tags)
         ↓
- [6-9. Load Linear Data] (Workspace, Teams, Users, Labels, Workflow States)
+ [6-9. Load Linear Data] (Workspace, Teams, Users, Labels, Workflow States, Existing Projects)
         ↓
  [10. Validate Mappings] (Preflight Verification)
         ↓  (если Dry Run — сформировать план и завершить)
  [11. Create Linear Projects]
         ↓
- [12. Create Linear Labels]
+ [12. Migrate Documents] (WEEEK Knowledge Base → Linear Project Documents)
         ↓
- [13. Create Parent Issues] (parentId == null)
+ [13. Create Linear Labels] (Tags + 'hold' label)
         ↓
- [14. Create Child Issues] (создание подзадач с привязкой к родителям)
+ [14. Create Parent Issues] (parentId == null, маппинг колонок и исполнителей)
         ↓
- [15. Apply Relations & Fallback Resolution]
+ [15. Create Child Issues] (создание подзадач с привязкой к родителям)
         ↓
- [16-19. Apply Assignees, Labels, Statuses, Dates]
+ [16. Subscribe Watchers] (подписка наблюдателей по стратегии: secondary_assignees / global_watcher / both)
         ↓
- [20. Generate Reports] (JSON + Markdown)
+ [17. Apply Re-migration Strategy] (если задача уже перенесена: skip / update_all / update_status_only)
+        ↓
+ [18. Generate Reports] (JSON + Markdown)
 ```
 
 ---
@@ -58,6 +62,13 @@
       "migratedAt": "2026-08-12T10:01:00.000Z"
     }
   },
+  "documents": {
+    "doc_50": {
+      "linearDocId": "lin_doc_999",
+      "title": "Architecture Overview",
+      "migratedAt": "2026-08-12T10:01:30.000Z"
+    }
+  },
   "labels": {
     "tag_10": {
       "linearLabelId": "lin_lbl_xyz",
@@ -68,6 +79,12 @@
     "alex@example.com": {
       "linearUserId": "lin_usr_456",
       "name": "Alex"
+    }
+  },
+  "boardColumns": {
+    "col_qa": {
+      "linearStateId": "lin_state_review",
+      "name": "❓ Тестирование"
     }
   },
   "tasks": {
@@ -81,41 +98,39 @@
 }
 ```
 
-### Защита от сбоев и перезаписи
-Запись состояния осуществляется атомарно:
-1. Сериализация в `.weeek-linear/state.json.tmp`.
-2. Синхронизация на диск (`fs.renameSync`).
-
 ---
 
-## 4. Разрешение иерархии (3-фазный алгоритм)
+## 4. Правила маппинга данных
 
-1. **Фаза 1 (Корневые задачи)**:
-   - Фильтруются задачи с `parentId === null` или `parentId === undefined`.
-   - Создаются в Linear и их ID фиксируются в `state.json`.
-2. **Фаза 2 (Подзадачи первого и последующих уровней)**:
-   - Задачи упорядочиваются по глубине вложенности (топологическая сортировка).
-   - Создаются с указанием `parentId = state.tasks[task.parentId].linearIssueId`.
-3. **Фаза 3 (Graceful Fallback)**:
-   - Если родительская задача завершилась ошибкой или не найдена, подзадача создается как обычная независимая задача, а в отчет добавляется предупреждение `WARN: Cannot resolve parent for task ID ...`.
+### Канбан-колонки WEEEK $\rightarrow$ Linear Workflow States
+1. **Явный маппинг пользователя**: настройки из Web UI или конфигурации имеют наивысший приоритет.
+2. **Опциональное создание отсутствующих статусов (`--create-missing-states` / `__create_new__`)**:
+   - Если статус в Linear отсутствует, движок автоматически создает новый Workflow State через GraphQL мутацию `linearClient.createWorkflowState({ teamId, name, type, color })`.
+   - Базовый тип (`backlog`, `unstarted`, `started`, `completed`, `canceled`) вычисляется функцией `guessWorkflowStateType(name)`.
+3. **Эвристический подбор**:
+   - `💡 Важное / Бэклог` $\rightarrow$ State с типом `backlog` / `unstarted`.
+   - `⏱ Запланировано / Todo` $\rightarrow$ State с типом `unstarted`.
+   - `👾 В работе / In Progress` $\rightarrow$ State с типом `started`.
+   - `❓ Тестирование / QA / Review` $\rightarrow$ State с именем `Review`/`QA` или типом `started`.
+   - `⁉️ Доработать` $\rightarrow$ State с типом `started`.
+   - `‼️ Закрыто / Done` $\rightarrow$ State с типом `completed`.
+   - `📁 Архив / Canceled` $\rightarrow$ State с типом `canceled` или `completed`.
 
----
+### Персональный маппинг пользователей (Assignees)
+- **Поиск по Email**: автоматическое сопоставление пользователей с одинаковым email.
+- **Индивидуальный селектор**: возможность явно назначить любого сотрудника Linear для каждого пользователя WEEEK.
+- **Fallback стратегии**:
+  - `unassigned`: задача создается без исполнителя (рекомендуется);
+  - `skip`: задачи этого пользователя пропускаются;
+  - `abort`: миграция прерывается при отсутствии соответствия.
 
-## 5. Правила маппинга данных
+### Наблюдатели (Subscribers / Watchers)
+- `none`: без назначения дополнительных наблюдателей.
+- `secondary_assignees`: 2-й и последующие исполнители WEEEK подписываются как наблюдатели в Linear.
+- `global_watcher`: выбранный сотрудник (Team Lead / PM) подписывается ко всем создаваемым задачам.
+- `both`: комбинация вторичных исполнителей и глобального наблюдателя.
 
-### Приоритеты
-- WEEEK `0` (Low) $\rightarrow$ Linear `4` (Low)
-- WEEEK `1` (Medium) $\rightarrow$ Linear `3` (Medium)
-- WEEEK `2` (High) $\rightarrow$ Linear `2` (High)
-- WEEEK `3` (Hold) $\rightarrow$ Linear `0` (No priority) + Label `hold`
-
-### Статусы
-- WEEEK `Not started` $\rightarrow$ Linear State с типом `backlog` / `unstarted`
-- WEEEK `In progress` $\rightarrow$ Linear State с типом `started`
-- WEEEK `Completed` $\rightarrow$ Linear State с типом `completed`
-
-### Даты
-- WEEEK `dateEnd` или `date` $\rightarrow$ Linear `dueDate` в формате `YYYY-MM-DD`.
-
-### Описания
-- WEEEK HTML/Markdown $\rightarrow$ Санитизированный Markdown с сохранением форматирования, ссылок и блоков кода.
+### Стратегии повторного запуска (Sync Strategy)
+- `skip`: пропуск уже перенесенных задач (по умолчанию).
+- `update_all`: полное обновление названия, описания, статуса, приоритета, дедлайна и исполнителя.
+- `update_status_only`: обновление только статуса, дедлайна и приоритета (сохраняя пользовательские правки в Linear).

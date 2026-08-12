@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SseManager, ApiRouter } from './routes.js';
 import { logger } from '../utils/logger.js';
+import { tf } from '../i18n/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,7 +98,7 @@ export class WebServer {
             this.serveStatic(req, res, parsedUrl);
           }
         } catch (err) {
-          logger.error(`Ошибка обработки запроса: ${(err as Error).message}`);
+          logger.error(tf('logs.server.requestError', (err as Error).message));
           if (!res.headersSent) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -108,7 +109,7 @@ export class WebServer {
       this.server.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
           // Если порт занят, пробуем следующий
-          logger.warn(`Порт ${this.port} занят, пробуем ${this.port + 1}...`);
+          logger.warn(tf('logs.server.portBusy', this.port, this.port + 1));
           this.port++;
           this.server?.close();
           this.start().then(resolve).catch(reject);

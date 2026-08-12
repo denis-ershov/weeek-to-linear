@@ -1,5 +1,5 @@
 import { CONSTANTS } from '../config/constants.js';
-import type { WeeekPriority, LinearPriority } from './types.js';
+import type { WeeekPriority, LinearPriority, WatcherStrategy } from './types.js';
 import type { WeeekTask, WeeekProject } from '../clients/weeek/types.js';
 import type {
   LinearWorkflowState,
@@ -17,11 +17,16 @@ export interface MappingContext {
   linearUsers: LinearUser[];
   linearLabelsByName: Map<string, string>; // Map<labelNameLower, linearLabelId>
   tasksStateMap: Record<string, { linearIssueId: string }>;
+  boardColumnMapping?: Record<string, string>; // weeekColumnId -> linearStateId
+  userMapping?: Record<string, string>; // weeekUserIdOrEmail -> linearUserId | 'unassigned' | 'skip'
+  watcherStrategy?: WatcherStrategy;
+  globalWatcherUserId?: string;
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
 }
 
 export interface TaskMappingResult {
   createInput: CreateIssueInput;
+  subscriberUserIds: string[];
   warnings: string[];
   skip: boolean;
   needsHoldLabel: boolean;
@@ -54,22 +59,144 @@ export function mapPriority(priority?: number | WeeekPriority | null): {
 }
 
 /**
+ * Определение базового типа статуса Linear ('backlog' | 'unstarted' | 'started' | 'completed' | 'canceled')
+ * на основе названия канбан-колонки WEEEK
+ */
+export function guessWorkflowStateType(
+  columnName: string,
+): 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled' {
+  const lower = columnName.toLowerCase().trim();
+
+  if (
+    lower.includes('закрыт') ||
+    lower.includes('done') ||
+    lower.includes('завершен') ||
+    lower.includes('готов')
+  ) {
+    return 'completed';
+  }
+
+  if (
+    lower.includes('архив') ||
+    lower.includes('отмен') ||
+    lower.includes('cancel')
+  ) {
+    return 'canceled';
+  }
+
+  if (
+    lower.includes('тест') ||
+    lower.includes('qa') ||
+    lower.includes('ревью') ||
+    lower.includes('review') ||
+    lower.includes('в работ') ||
+    lower.includes('в процесс') ||
+    lower.includes('доработ') ||
+    lower.includes('in progress') ||
+    lower.includes('doing')
+  ) {
+    return 'started';
+  }
+
+  if (
+    lower.includes('важн') ||
+    lower.includes('бэклог') ||
+    lower.includes('backlog')
+  ) {
+    return 'backlog';
+  }
+
+  return 'unstarted';
+}
+
+/**
+ * Умное сопоставление канбан-колонки WEEEK с Linear WorkflowState
+ */
+export function mapBoardColumnToWorkflowState(
+  boardColumnId: string | null | undefined,
+  boardColumnTitle: string | null | undefined,
+  boardColumnMapping: Record<string, string> | undefined,
+  workflowStates: LinearWorkflowState[],
+): string | undefined {
+  if (workflowStates.length === 0) return undefined;
+
+  // 1. Прямой маппинг по ID колонки
+  if (boardColumnId && boardColumnMapping && boardColumnMapping[String(boardColumnId)]) {
+    const targetStateId = boardColumnMapping[String(boardColumnId)];
+    const exists = workflowStates.some(s => s.id === targetStateId);
+    if (exists) return targetStateId;
+  }
+
+  // 2. Эвристическое сопоставление по названию колонки
+  if (boardColumnTitle) {
+    const lower = boardColumnTitle.toLowerCase().trim();
+
+    // Завершенные / Архив
+    if (lower.includes('закрыт') || lower.includes('done') || lower.includes('завершен') || lower.includes('готов')) {
+      const state = workflowStates.find(s => s.type.toLowerCase() === 'completed');
+      if (state) return state.id;
+    }
+
+    if (lower.includes('архив') || lower.includes('отмен') || lower.includes('cancel')) {
+      const state =
+        workflowStates.find(s => s.type.toLowerCase() === 'canceled') ||
+        workflowStates.find(s => s.type.toLowerCase() === 'completed');
+      if (state) return state.id;
+    }
+
+    // В работе / Тестирование / Доработка
+    if (lower.includes('тест') || lower.includes('qa') || lower.includes('ревью') || lower.includes('review')) {
+      const state =
+        workflowStates.find(s => s.name.toLowerCase().includes('review') || s.name.toLowerCase().includes('qa')) ||
+        workflowStates.find(s => s.type.toLowerCase() === 'started');
+      if (state) return state.id;
+    }
+
+    if (lower.includes('в работ') || lower.includes('в процесс') || lower.includes('доработ') || lower.includes('in progress') || lower.includes('doing')) {
+      const state = workflowStates.find(s => s.type.toLowerCase() === 'started');
+      if (state) return state.id;
+    }
+
+    // Запланировано / Бэклог / Важное
+    if (lower.includes('план') || lower.includes('запланирован') || lower.includes('todo') || lower.includes('не начато')) {
+      const state =
+        workflowStates.find(s => s.type.toLowerCase() === 'unstarted') ||
+        workflowStates.find(s => s.type.toLowerCase() === 'backlog');
+      if (state) return state.id;
+    }
+
+    if (lower.includes('важн') || lower.includes('бэклог') || lower.includes('backlog')) {
+      const state =
+        workflowStates.find(s => s.type.toLowerCase() === 'backlog') ||
+        workflowStates.find(s => s.type.toLowerCase() === 'unstarted');
+      if (state) return state.id;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Преобразование статуса WEEEK в соответствующий Linear WorkflowState ID
  */
 export function mapStatus(
   isCompleted: boolean | undefined,
   workflowStates: LinearWorkflowState[],
-  customStatusName?: string | null,
+  boardColumnId?: string | null,
+  boardColumnTitle?: string | null,
+  boardColumnMapping?: Record<string, string>,
 ): string | undefined {
   if (workflowStates.length === 0) return undefined;
 
-  // Если задано кастомное имя статуса, ищем точное или приближенное совпадение
-  if (customStatusName) {
-    const normalized = customStatusName.trim().toLowerCase();
-    const found = workflowStates.find(
-      s => s.name.toLowerCase() === normalized || s.type.toLowerCase() === normalized,
+  // Сначала пробуем сопоставить по канбан-колонке
+  if (boardColumnId || boardColumnTitle) {
+    const colStateId = mapBoardColumnToWorkflowState(
+      boardColumnId,
+      boardColumnTitle,
+      boardColumnMapping,
+      workflowStates,
     );
-    if (found) return found.id;
+    if (colStateId) return colStateId;
   }
 
   if (isCompleted) {
@@ -89,36 +216,105 @@ export function mapStatus(
 }
 
 /**
- * Сопоставление пользователя WEEEK с пользователем Linear по Email
+ * Резолвинг пользователя WEEEK в Linear User ID с учетом персонального маппинга
  */
-export function mapAssignee(
+export function resolveAssignee(
   rawAssignee: unknown,
   linearUsers: LinearUser[],
-): { assigneeId?: string; warning?: string } {
+  userMapping?: Record<string, string>,
+): { assigneeId?: string; shouldSkip?: boolean; warning?: string } {
   if (!rawAssignee) {
     return {};
   }
 
+  let userId: string | null = null;
   let email: string | null = null;
+
   if (typeof rawAssignee === 'string') {
-    email = rawAssignee.includes('@') ? rawAssignee.trim().toLowerCase() : null;
+    if (rawAssignee.includes('@')) {
+      email = rawAssignee.trim().toLowerCase();
+    } else {
+      userId = rawAssignee.trim();
+    }
   } else if (typeof rawAssignee === 'object' && rawAssignee !== null) {
-    const obj = rawAssignee as { email?: string };
-    if (obj.email) {
-      email = obj.email.trim().toLowerCase();
+    const obj = rawAssignee as { id?: string | number; email?: string };
+    if (obj.id) userId = String(obj.id);
+    if (obj.email) email = obj.email.trim().toLowerCase();
+  }
+
+  // 1. Проверка явного маппинга по ID или Email
+  if (userMapping) {
+    const mappingKey = (userId && userMapping[userId]) || (email && userMapping[email]);
+    if (mappingKey) {
+      if (mappingKey === 'unassigned') {
+        return {};
+      }
+      if (mappingKey === 'skip') {
+        return { shouldSkip: true };
+      }
+      // Проверяем существование в Linear
+      const targetUser = linearUsers.find(u => u.id === mappingKey || u.email.toLowerCase() === mappingKey.toLowerCase());
+      if (targetUser) {
+        return { assigneeId: targetUser.id };
+      }
     }
   }
 
-  if (!email) {
-    return { warning: `Не удалось определить email пользователя WEEEK: ${JSON.stringify(rawAssignee)}` };
+  // 2. Поиск по Email в Linear
+  if (email) {
+    const matched = linearUsers.find(u => u.email.toLowerCase() === email);
+    if (matched) {
+      return { assigneeId: matched.id };
+    }
+    return { warning: `Пользователь с email "${email}" не найден в Linear организации` };
   }
 
-  const matched = linearUsers.find(u => u.email.toLowerCase() === email);
-  if (matched) {
-    return { assigneeId: matched.id };
+  return { warning: `Не удалось сопоставить пользователя WEEEK: ${JSON.stringify(rawAssignee)}` };
+}
+
+/**
+ * Резолвинг списка наблюдателей (Subscribers)
+ */
+export function resolveSubscribers(
+  rawAssignees: unknown[] | undefined,
+  linearUsers: LinearUser[],
+  userMapping: Record<string, string> | undefined,
+  watcherStrategy: WatcherStrategy | undefined,
+  globalWatcherUserId: string | undefined,
+  primaryAssigneeId: string | undefined,
+): string[] {
+  const subscribersSet = new Set<string>();
+
+  // 1. Глобальный наблюдатель (например, Team Lead)
+  if (
+    (watcherStrategy === 'global_watcher' || watcherStrategy === 'both') &&
+    globalWatcherUserId
+  ) {
+    subscribersSet.add(globalWatcherUserId);
   }
 
-  return { warning: `Пользователь с email "${email}" не найден в Linear организации` };
+  // 2. Вторичные исполнители из WEEEK
+  if (
+    (watcherStrategy === 'secondary_assignees' || watcherStrategy === 'both') &&
+    Array.isArray(rawAssignees) &&
+    rawAssignees.length > 1
+  ) {
+    // Пропускаем первого (он основной assignee)
+    for (let i = 1; i < rawAssignees.length; i++) {
+      const secAssignee = rawAssignees[i];
+      const match = resolveAssignee(secAssignee, linearUsers, userMapping);
+      if (match.assigneeId) {
+        subscribersSet.add(match.assigneeId);
+      }
+    }
+  }
+
+  // Не подписываем основного исполнителя повторно
+  if (primaryAssigneeId) {
+    subscribersSet.delete(primaryAssigneeId);
+  }
+
+  return Array.from(subscribersSet);
 }
 
 /**
@@ -148,14 +344,30 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     warnings.push(`Некорректный формат даты задачи ID ${weeekTask.id}: ${weeekTask.dateEnd || weeekTask.date}`);
   }
 
-  // 3. Статус
-  const stateId = mapStatus(weeekTask.isCompleted, context.workflowStates);
+  // 3. Статус (с учетом канбан-колонки)
+  const columnId = weeekTask.boardColumnId || weeekTask.columnId;
+  const stateId = mapStatus(
+    weeekTask.isCompleted,
+    context.workflowStates,
+    columnId,
+    undefined,
+    context.boardColumnMapping,
+  );
 
   // 4. Исполнитель
   let assigneeId: string | undefined;
   const firstAssignee = Array.isArray(weeekTask.assignees) && weeekTask.assignees.length > 0 ? weeekTask.assignees[0] : null;
   if (firstAssignee) {
-    const assigneeMatch = mapAssignee(firstAssignee, context.linearUsers);
+    const assigneeMatch = resolveAssignee(firstAssignee, context.linearUsers, context.userMapping);
+    if (assigneeMatch.shouldSkip) {
+      return {
+        createInput: {} as CreateIssueInput,
+        subscriberUserIds: [],
+        warnings,
+        skip: true,
+        needsHoldLabel,
+      };
+    }
     if (assigneeMatch.assigneeId) {
       assigneeId = assigneeMatch.assigneeId;
     } else if (assigneeMatch.warning) {
@@ -163,6 +375,7 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
       if (context.unmatchedUserStrategy === 'skip') {
         return {
           createInput: {} as CreateIssueInput,
+          subscriberUserIds: [],
           warnings,
           skip: true,
           needsHoldLabel,
@@ -171,7 +384,17 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     }
   }
 
-  // 5. Метки (Labels)
+  // 5. Наблюдатели (Subscribers)
+  const subscriberUserIds = resolveSubscribers(
+    weeekTask.assignees,
+    context.linearUsers,
+    context.userMapping,
+    context.watcherStrategy,
+    context.globalWatcherUserId,
+    assigneeId,
+  );
+
+  // 6. Метки (Labels)
   const labelIds: string[] = [];
   if (Array.isArray(weeekTask.tags)) {
     for (const tag of weeekTask.tags) {
@@ -193,7 +416,7 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     }
   }
 
-  // 6. Родительская задача (Parent ID)
+  // 7. Родительская задача (Parent ID)
   let parentId: string | undefined;
   if (weeekTask.parentId) {
     const parentRecord = context.tasksStateMap[String(weeekTask.parentId)];
@@ -217,6 +440,7 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
 
   return {
     createInput,
+    subscriberUserIds,
     warnings,
     skip: false,
     needsHoldLabel,

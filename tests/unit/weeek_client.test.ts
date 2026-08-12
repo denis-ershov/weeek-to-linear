@@ -106,4 +106,70 @@ describe('clients/weeek/client', () => {
     expect(tasks[0]?.assignees).toEqual([]);
     expect(tasks[0]?.tags).toEqual([]);
   });
+
+  it('getBoards() и getBoardColumns() должны загружать доски и колонки через API', async () => {
+    const mockBoards = {
+      boards: [
+        { id: 1, name: 'Основная доска', projectId: 10 },
+      ],
+    };
+
+    const mockColumns = {
+      boardColumns: [
+        { id: 101, name: '💡 Важное', boardId: 1 },
+        { id: 102, name: '👾 В работе', boardId: 1 },
+        { id: 103, name: '‼️ Закрыто', boardId: 1 },
+      ],
+    };
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockBoards,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockColumns,
+      });
+
+    const columns = await client.getBoardColumns({ projectId: '10' });
+    expect(columns).toHaveLength(3);
+    expect(columns[0]?.name).toBe('💡 Важное');
+    expect(columns[1]?.name).toBe('👾 В работе');
+    expect(columns[2]?.name).toBe('‼️ Закрыто');
+  });
+
+  it('getDocuments() должен загружать документы базы знаний и парсить EditorJS/HTML контент', async () => {
+    const mockDocsResponse = {
+      articles: [
+        {
+          id: 501,
+          name: 'Онбординг разработчика',
+          body: {
+            blocks: [
+              { type: 'header', data: { text: 'Добро пожаловать', level: 1 } },
+              { type: 'paragraph', data: { text: 'Инструкция по развертыванию' } },
+            ],
+          },
+          projectId: 10,
+        },
+      ],
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockDocsResponse,
+    });
+
+    const docs = await client.getDocuments({ projectId: '10' });
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.id).toBe('501');
+    expect(docs[0]?.title).toBe('Онбординг разработчика');
+    expect(docs[0]?.content).toContain('# Добро пожаловать');
+    expect(docs[0]?.content).toContain('Инструкция по развертыванию');
+  });
 });

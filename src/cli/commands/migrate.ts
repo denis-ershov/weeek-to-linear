@@ -7,6 +7,7 @@ import { StateManager } from '../../core/state.js';
 import { MigrationEngine } from '../../core/engine.js';
 import type { MigrationOptions } from '../../core/types.js';
 import { theme, printBanner } from '../ui/theme.js';
+import { t } from '../../i18n/index.js';
 
 export async function migrateCommand(cliOptions: {
   dryRun?: boolean;
@@ -15,11 +16,20 @@ export async function migrateCommand(cliOptions: {
   weeekProject?: string;
   linearTeam?: string;
   includeCompleted?: boolean;
+  includeDocuments?: boolean;
+  createMissingStates?: boolean;
+  renameMatchedStates?: boolean;
+  recreateAllColumns?: boolean;
   includeDeleted?: boolean;
+  syncStrategy?: 'skip' | 'update_all' | 'update_status_only';
+  watcherStrategy?: 'none' | 'secondary_assignees' | 'global_watcher' | 'both';
+  globalWatcher?: string;
   unmatchedUser?: 'unassigned' | 'skip' | 'abort';
+  columnMapping?: Record<string, string>;
+  userMapping?: Record<string, string>;
 }): Promise<void> {
   printBanner();
-  p.intro(theme.title('Мастер миграции из WEEEK в Linear'));
+  p.intro(theme.title(t('cli.migrate.intro')));
 
   const config = getAppConfig();
   let weeekToken = config.WEEEK_API_TOKEN;
@@ -27,12 +37,12 @@ export async function migrateCommand(cliOptions: {
 
   if (!weeekToken) {
     const input = await p.text({
-      message: 'Введите WEEEK API токен:',
+      message: t('cli.auth.enterWeeekToken'),
       placeholder: 'eyJhbGciOiJIUzI1Ni...',
-      validate: val => (!val ? 'Токен обязателен' : undefined),
+      validate: val => (!val ? t('common.tokenRequired') : undefined),
     });
     if (p.isCancel(input)) {
-      p.cancel('Миграция отменена');
+      p.cancel(t('common.cancel'));
       process.exit(0);
     }
     weeekToken = input;
@@ -40,18 +50,18 @@ export async function migrateCommand(cliOptions: {
 
   if (!linearToken) {
     const input = await p.password({
-      message: 'Введите Linear Personal API Key:',
-      validate: val => (!val ? 'Токен обязателен' : undefined),
+      message: t('cli.auth.enterLinearToken'),
+      validate: val => (!val ? t('common.tokenRequired') : undefined),
     });
     if (p.isCancel(input)) {
-      p.cancel('Миграция отменена');
+      p.cancel(t('common.cancel'));
       process.exit(0);
     }
     linearToken = input;
   }
 
   const spinner = p.spinner();
-  spinner.start('Проверка подключения и загрузка проектов...');
+  spinner.start(t('cli.migrate.loadingProjects'));
 
   const weeekClient = new WeeekClient({ apiToken: weeekToken });
   const linearClient = new LinearClient({ apiToken: linearToken });
@@ -64,28 +74,28 @@ export async function migrateCommand(cliOptions: {
       weeekClient.getProjects(),
       linearClient.getTeams(),
     ]);
-    spinner.stop(theme.success('✓ Проекты и команды успешно загружены'));
+    spinner.stop(theme.success(t('cli.migrate.loadedSuccess')));
   } catch (err) {
-    spinner.stop(theme.error(`Ошибка загрузки: ${(err as Error).message}`));
+    spinner.stop(theme.error(`${t('cli.migrate.loadError')} ${(err as Error).message}`));
     process.exit(1);
   }
 
   if (weeekProjects.length === 0) {
-    p.cancel('В WEEEK не найдено ни одного проекта.');
+    p.cancel(t('cli.migrate.noProjects'));
     process.exit(0);
   }
 
   if (linearTeams.length === 0) {
-    p.cancel('В Linear не найдено ни одной команды.');
+    p.cancel(t('cli.migrate.noTeams'));
     process.exit(0);
   }
 
   let selectedProjectId = cliOptions.weeekProject;
   if (!selectedProjectId) {
     const projectChoice = await p.select({
-      message: 'Выберите проект WEEEK для миграции:',
+      message: t('cli.migrate.selectProject'),
       options: [
-        { value: '__all__', label: '📦 Все проекты WEEEK' },
+        { value: '__all__', label: t('cli.migrate.allProjects') },
         ...weeekProjects.map(prj => ({
           value: prj.id,
           label: `${prj.name} (ID: ${prj.id})`,
@@ -94,7 +104,7 @@ export async function migrateCommand(cliOptions: {
     });
 
     if (p.isCancel(projectChoice)) {
-      p.cancel('Миграция отменена');
+      p.cancel(t('common.cancel'));
       process.exit(0);
     }
     selectedProjectId = projectChoice === '__all__' ? undefined : (projectChoice as string);
@@ -103,7 +113,7 @@ export async function migrateCommand(cliOptions: {
   let selectedTeamKey = cliOptions.linearTeam;
   if (!selectedTeamKey) {
     const teamChoice = await p.select({
-      message: 'Выберите целевую команду Linear:',
+      message: t('cli.migrate.selectTeam'),
       options: linearTeams.map(team => ({
         value: team.key,
         label: `${team.name} [${team.key}]`,
@@ -111,39 +121,137 @@ export async function migrateCommand(cliOptions: {
     });
 
     if (p.isCancel(teamChoice)) {
-      p.cancel('Миграция отменена');
+      p.cancel(t('common.cancel'));
       process.exit(0);
     }
     selectedTeamKey = teamChoice as string;
   }
 
+  // Интерактивный выбор стратегии колонок
+  let createMissingStates = cliOptions.createMissingStates ?? true;
+  let renameMatchedStates = cliOptions.renameMatchedStates ?? false;
+  let recreateAllColumns = cliOptions.recreateAllColumns ?? false;
+
+  if (
+    !cliOptions.weeekProject &&
+    !cliOptions.createMissingStates &&
+    !cliOptions.renameMatchedStates &&
+    !cliOptions.recreateAllColumns
+  ) {
+    const columnModeChoice = await p.select({
+      message: t('cli.migrate.columnModeQuestion'),
+      options: [
+        { value: 'create_missing', label: t('cli.migrate.columnModeCreateMissing') },
+        { value: 'rename_matched', label: t('cli.migrate.columnModeRename') },
+        { value: 'recreate_1to1', label: t('cli.migrate.columnModeRecreate') },
+        { value: 'existing_only', label: t('cli.migrate.columnModeExisting') },
+      ],
+    });
+
+    if (p.isCancel(columnModeChoice)) {
+      p.cancel(t('common.cancel'));
+      process.exit(0);
+    }
+
+    if (columnModeChoice === 'create_missing') {
+      createMissingStates = true;
+    } else if (columnModeChoice === 'rename_matched') {
+      createMissingStates = true;
+      renameMatchedStates = true;
+    } else if (columnModeChoice === 'recreate_1to1') {
+      recreateAllColumns = true;
+    } else if (columnModeChoice === 'existing_only') {
+      createMissingStates = false;
+    }
+  }
+
+  // Интерактивный выбор наблюдателей
+  let watcherStrategy = cliOptions.watcherStrategy || 'none';
+  let globalWatcherUserId = cliOptions.globalWatcher;
+
+  if (!cliOptions.weeekProject && !cliOptions.watcherStrategy) {
+    const watcherChoice = await p.select({
+      message: t('cli.migrate.watcherQuestion'),
+      options: [
+        { value: 'secondary_assignees', label: t('cli.migrate.watcherSecondary') },
+        { value: 'none', label: t('cli.migrate.watcherNone') },
+        { value: 'global_watcher', label: t('cli.migrate.watcherGlobal') },
+        { value: 'both', label: t('cli.migrate.watcherBoth') },
+      ],
+    });
+
+    if (p.isCancel(watcherChoice)) {
+      p.cancel(t('common.cancel'));
+      process.exit(0);
+    }
+
+    watcherStrategy = watcherChoice as 'none' | 'secondary_assignees' | 'global_watcher' | 'both';
+
+    if ((watcherStrategy === 'global_watcher' || watcherStrategy === 'both') && !globalWatcherUserId) {
+      const linearUsers = await linearClient.getUsers();
+      if (linearUsers.length > 0) {
+        const userChoice = await p.select({
+          message: t('cli.migrate.selectGlobalWatcher'),
+          options: linearUsers.map(u => ({
+            value: u.id,
+            label: `${u.name} (${u.email})`,
+          })),
+        });
+        if (!p.isCancel(userChoice)) {
+          globalWatcherUserId = userChoice as string;
+        }
+      }
+    }
+  }
+
+  // Интерактивный выбор стратегии повторного переноса
+  let syncStrategy = cliOptions.syncStrategy || 'skip';
+  if (!cliOptions.weeekProject && !cliOptions.syncStrategy) {
+    const syncChoice = await p.select({
+      message: t('cli.migrate.syncQuestion'),
+      options: [
+        { value: 'skip', label: t('cli.migrate.syncSkip') },
+        { value: 'update_all', label: t('cli.migrate.syncUpdateAll') },
+        { value: 'update_status_only', label: t('cli.migrate.syncUpdateStatus') },
+      ],
+    });
+
+    if (!p.isCancel(syncChoice)) {
+      syncStrategy = syncChoice as 'skip' | 'update_all' | 'update_status_only';
+    }
+  }
+
   // Проверка существующего состояния (Resume)
   const existingTasksCount = Object.keys(stateManager.getState().tasks).length;
   if (existingTasksCount > 0 && !cliOptions.force && !cliOptions.resume) {
+    const resumeConfirmMsg = t('cli.migrate.resumeConfirm').replace(
+      '{count}',
+      String(existingTasksCount),
+    );
     const resumeChoice = await p.confirm({
-      message: `Обнаружена предыдущая миграция (${existingTasksCount} сохраненных задач). Продолжить (Resume)?`,
+      message: resumeConfirmMsg,
       initialValue: true,
     });
 
     if (p.isCancel(resumeChoice)) {
-      p.cancel('Миграция отменена');
+      p.cancel(t('common.cancel'));
       process.exit(0);
     }
 
     if (!resumeChoice) {
       const forceChoice = await p.confirm({
-        message: 'Сбросить сохраненный прогресс и начать заново (--force)?',
+        message: t('cli.migrate.forceConfirm'),
         initialValue: false,
       });
       if (p.isCancel(forceChoice) || !forceChoice) {
-        p.cancel('Миграция отменена');
+        p.cancel(t('common.cancel'));
         process.exit(0);
       }
       stateManager.clear();
     }
   }
 
-  // Настройка прогресс-бара
+  // Прогресс-бар
   const progressBar = new cliProgress.SingleBar(
     {
       format: `${theme.primary('{bar}')} | {percentage}% | {value}/{total} {type} | {item}`,
@@ -188,7 +296,16 @@ export async function migrateCommand(cliOptions: {
     resume: cliOptions.resume,
     force: cliOptions.force,
     includeCompleted: cliOptions.includeCompleted ?? true,
+    includeDocuments: cliOptions.includeDocuments ?? true,
+    createMissingStates,
+    renameMatchedStates,
+    recreateAllColumns,
+    boardColumnMapping: cliOptions.columnMapping,
+    userMapping: cliOptions.userMapping,
     includeDeleted: cliOptions.includeDeleted ?? false,
+    syncStrategy,
+    watcherStrategy,
+    globalWatcherUserId,
     unmatchedUserStrategy: cliOptions.unmatchedUser || 'unassigned',
   };
 
@@ -201,32 +318,34 @@ export async function migrateCommand(cliOptions: {
 
     if (cliOptions.dryRun) {
       p.note(
-        `Проектов к созданию: ${summary.projects.created}\n` +
-          `Задач к созданию:    ${summary.tasks.created}\n` +
-          `Меток к созданию:    ${summary.labels.created} (существующих: ${summary.labels.reused})\n` +
-          `Предупреждений:      ${summary.warnings.length}\n` +
-          `Ошибок:              ${summary.errors.length}\n\n` +
-          `Отчет: ${theme.primary(reportPaths.markdown)}`,
-        theme.warningBadge('РЕЖИМ DRY RUN ЗАВЕРШЕН — ИЗМЕНЕНИЯ НЕ ВНОСИЛИСЬ'),
+        `${t('cli.migrate.projCreated')} ${summary.projects.created}\n` +
+          `${t('cli.migrate.tasksCreated')} ${summary.tasks.created}\n` +
+          `${t('cli.migrate.labelsCreated')} ${summary.labels.created} (${t('cli.migrate.labelsReused')}: ${summary.labels.reused})\n` +
+          `${t('cli.migrate.warnings')} ${summary.warnings.length}\n` +
+          `${t('cli.migrate.errors')} ${summary.errors.length}\n\n` +
+          `${t('cli.migrate.reportMd')} ${theme.primary(reportPaths.markdown)}`,
+        theme.warningBadge(t('cli.migrate.dryRunBadge')),
       );
     } else {
       p.note(
-        `Создано проектов: ${theme.bold(summary.projects.created)} (пропущено: ${summary.projects.skipped})\n` +
-          `Создано задач:    ${theme.bold(summary.tasks.created)} (пропущено: ${summary.tasks.skipped})\n` +
-          `Создано меток:    ${theme.bold(summary.labels.created)} (переиспользовано: ${summary.labels.reused})\n` +
-          `Связей подзадач:  ${theme.bold(summary.tasks.parentsResolved)}\n` +
-          `Ошибок:           ${summary.errors.length === 0 ? theme.success('0') : theme.error(String(summary.errors.length))}\n\n` +
-          `Детальный отчет сохранен:\n` +
-          `- Markdown: ${theme.primary(reportPaths.markdown)}\n` +
-          `- JSON:     ${theme.primary(reportPaths.json)}`,
-        summary.errors.length === 0 ? theme.successBadge('МИГРАЦИЯ УСПЕШНО ЗАВЕРШЕНА') : theme.warningBadge('МИГРАЦИЯ ЗАВЕРШЕНА С ОШИБКАМИ'),
+        `${t('cli.migrate.projCreated')} ${theme.bold(String(summary.projects.created))} (${t('cli.migrate.projSkipped')}: ${summary.projects.skipped})\n` +
+          `${t('cli.migrate.tasksCreated')} ${theme.bold(String(summary.tasks.created))} (${t('cli.migrate.tasksSkipped')}: ${summary.tasks.skipped})\n` +
+          `${t('cli.migrate.labelsCreated')} ${theme.bold(String(summary.labels.created))} (${t('cli.migrate.labelsReused')}: ${summary.labels.reused})\n` +
+          `${t('cli.migrate.parentsResolved')} ${theme.bold(String(summary.tasks.parentsResolved))}\n` +
+          `${t('cli.migrate.errors')} ${summary.errors.length === 0 ? theme.success('0') : theme.error(String(summary.errors.length))}\n\n` +
+          `${t('cli.migrate.reportSaved')}\n` +
+          `${t('cli.migrate.reportMd')} ${theme.primary(reportPaths.markdown)}\n` +
+          `${t('cli.migrate.reportJson')} ${theme.primary(reportPaths.json)}`,
+        summary.errors.length === 0
+          ? theme.successBadge(t('cli.migrate.successBadge'))
+          : theme.warningBadge(t('cli.migrate.errorBadge')),
       );
     }
 
-    p.outro(theme.bold('Спасибо за использование WEEEK → Linear Migration Tool!'));
+    p.outro(theme.bold(t('cli.migrate.outro')));
   } catch (err) {
     if (isBarActive) progressBar.stop();
-    p.log.error(theme.error(`Критическая ошибка миграции: ${(err as Error).message}`));
+    p.log.error(theme.error(`${t('cli.migrate.criticalError')} ${(err as Error).message}`));
     process.exit(1);
   }
 }

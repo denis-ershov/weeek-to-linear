@@ -5,45 +5,86 @@ import { linearTeamsCommand } from './commands/linear.js';
 import { migrateCommand } from './commands/migrate.js';
 import { uiCommand } from './commands/ui.js';
 import { CONSTANTS } from '../config/constants.js';
+import { detectLocale, setLocale, t } from '../i18n/index.js';
+
+// Определяем язык ДО регистрации команд — чтобы описания были локализованы
+setLocale(detectLocale());
 
 const program = new Command();
 
 program
   .name(CONSTANTS.APP_NAME)
-  .description('Open-source CLI tool for safe, idempotent migration from WEEEK to Linear')
-  .version(CONSTANTS.APP_VERSION, '-v, --version', 'Вывод текущей версии утилиты');
+  .description(t('cli.description'))
+  .version(CONSTANTS.APP_VERSION, '-v, --version', t('cli.versionFlag'))
+  .option('--lang <ru|en>', t('cli.flags.lang'), detectLocale());
 
 program
   .command('auth:test')
-  .description('Проверка подключения к API WEEEK и Linear')
+  .description(t('cli.commands.authTest'))
   .action(authTestCommand);
 
 program
   .command('weeek:projects')
-  .description('Получение списка проектов из рабочего пространства WEEEK')
+  .description(t('cli.commands.weeekProjects'))
   .action(weeekProjectsCommand);
 
 program
   .command('linear:teams')
-  .description('Получение списка доступных команд Linear')
+  .description(t('cli.commands.linearTeams'))
   .action(linearTeamsCommand);
 
 program
   .command('migrate')
-  .description('Запуск интерактивного мастера миграции задач и проектов из WEEEK в Linear')
-  .option('-d, --dry-run', 'Режим симуляции: валидация и маппинг без создания сущностей в Linear')
-  .option('-r, --resume', 'Продолжить незавершенную миграцию на основе сохраненного состояния')
-  .option('-f, --force', 'Принудительный запуск с очисткой сохраненного состояния')
-  .option('-p, --weeek-project <id>', 'ID проекта WEEEK для миграции (неинтерактивный режим)')
-  .option('-t, --linear-team <key>', 'Ключ команды Linear, например ENG (неинтерактивный режим)')
-  .option('--no-completed', 'Не переносить завершенные задачи')
-  .option('--include-deleted', 'Переносить удаленные задачи WEEEK')
+  .description(t('cli.commands.migrate'))
+  .option('-d, --dry-run', t('cli.flags.dryRun'))
+  .option('-r, --resume', t('cli.flags.resume'))
+  .option('-f, --force', t('cli.flags.force'))
+  .option('-p, --weeek-project <id>', t('cli.flags.weeekProject'))
+  .option('-t, --linear-team <key>', t('cli.flags.linearTeam'))
+  .option('--no-completed', t('cli.flags.noCompleted'))
+  .option('--no-docs', t('cli.flags.noDocs'))
+  .option('--create-missing-states', t('cli.flags.createMissingStates'), false)
+  .option('--rename-matched-states', t('cli.flags.renameMatchedStates'), false)
+  .option('--recreate-columns', t('cli.flags.recreateColumns'), false)
+  .option('--include-deleted', t('cli.flags.includeDeleted'))
+  .option(
+    '--sync-strategy <strategy>',
+    t('cli.flags.syncStrategy'),
+    'skip',
+  )
+  .option(
+    '--watcher-strategy <strategy>',
+    t('cli.flags.watcherStrategy'),
+    'none',
+  )
+  .option('--global-watcher <userId>', t('cli.flags.globalWatcher'))
   .option(
     '--unmatched-user <strategy>',
-    'Действие при ненайденном пользователе: unassigned | skip | abort',
+    t('cli.flags.unmatchedUser'),
     'unassigned',
   )
+  .option('--column-mapping <json>', t('cli.flags.columnMapping'))
+  .option('--user-mapping <json>', t('cli.flags.userMapping'))
   .action(options => {
+    let parsedColumnMapping: Record<string, string> | undefined;
+    let parsedUserMapping: Record<string, string> | undefined;
+
+    if (options.columnMapping) {
+      try {
+        parsedColumnMapping = JSON.parse(options.columnMapping);
+      } catch {
+        console.error(`${t('cli.migrate.jsonError')} --column-mapping`);
+      }
+    }
+
+    if (options.userMapping) {
+      try {
+        parsedUserMapping = JSON.parse(options.userMapping);
+      } catch {
+        console.error(`${t('cli.migrate.jsonError')} --user-mapping`);
+      }
+    }
+
     return migrateCommand({
       dryRun: options.dryRun,
       resume: options.resume,
@@ -51,17 +92,26 @@ program
       weeekProject: options.weeekProject,
       linearTeam: options.linearTeam,
       includeCompleted: options.completed,
+      includeDocuments: options.docs,
+      createMissingStates: options.createMissingStates,
+      renameMatchedStates: options.renameMatchedStates,
+      recreateAllColumns: options.recreateColumns,
       includeDeleted: options.includeDeleted,
+      syncStrategy: options.syncStrategy,
+      watcherStrategy: options.watcherStrategy,
+      globalWatcher: options.globalWatcher,
       unmatchedUser: options.unmatchedUser,
+      columnMapping: parsedColumnMapping,
+      userMapping: parsedUserMapping,
     });
   });
 
 program
   .command('ui')
   .alias('web')
-  .description('Запуск визуального веб-интерфейса для управления миграцией')
-  .option('-p, --port <number>', 'Порт для запуска сервера (по умолчанию: 3456)')
-  .option('--no-open', 'Не открывать браузер автоматически')
+  .description(t('cli.commands.ui'))
+  .option('-p, --port <number>', t('cli.flags.port'))
+  .option('--no-open', t('cli.flags.noOpen'))
   .action(options => {
     return uiCommand({
       port: options.port,

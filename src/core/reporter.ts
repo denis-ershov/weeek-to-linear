@@ -18,6 +18,8 @@ export class ReportGenerator {
         tasks: state.tasks,
         labels: state.labels,
         users: state.users,
+        boardColumns: state.boardColumns || {},
+        documents: state.documents || {},
       },
     };
 
@@ -40,17 +42,19 @@ export class ReportGenerator {
   ): string {
     const taskEntries = Object.entries(state.tasks);
     const projectEntries = Object.entries(state.projects);
+    const docEntries = Object.entries(state.documents || {});
 
     let md = `# Отчет о миграции WEEEK → Linear\n\n`;
     md += `**Дата:** ${new Date(summary.startedAt).toLocaleString('ru-RU')}  \n`;
     md += `**Длительность:** ${summary.durationSeconds.toFixed(1)} сек.  \n\n`;
 
     md += `## 📊 Итоговая статистика\n\n`;
-    md += `| Сущность | Всего | Создано | Пропущено | Ошибки |\n`;
-    md += `| :--- | :--- | :--- | :--- | :--- |\n`;
-    md += `| **Проекты** | ${summary.projects.total} | ${summary.projects.created} | ${summary.projects.skipped} | ${summary.projects.failed} |\n`;
-    md += `| **Задачи** | ${summary.tasks.total} | ${summary.tasks.created} | ${summary.tasks.skipped} | ${summary.tasks.failed} |\n`;
-    md += `| **Метки** | ${summary.labels.total} | ${summary.labels.created} | ${summary.labels.reused} | 0 |\n\n`;
+    md += `| Сущность | Всего | Создано | Обновлено | Пропущено | Ошибки |\n`;
+    md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+    md += `| **Проекты** | ${summary.projects.total} | ${summary.projects.created} | 0 | ${summary.projects.skipped} | ${summary.projects.failed} |\n`;
+    md += `| **Задачи** | ${summary.tasks.total} | ${summary.tasks.created} | ${summary.tasks.updated} | ${summary.tasks.skipped} | ${summary.tasks.failed} |\n`;
+    md += `| **Метки** | ${summary.labels.total} | ${summary.labels.created} | 0 | ${summary.labels.reused} | 0 |\n`;
+    md += `| **Документы** | ${summary.documents.total} | ${summary.documents.created} | 0 | ${summary.documents.skipped} | ${summary.documents.failed} |\n\n`;
 
     md += `**Разрешение связей подзадач:** ${summary.tasks.parentsResolved} успешно, ${summary.tasks.parentsFailed} с предупреждениями.\n\n`;
 
@@ -81,6 +85,16 @@ export class ReportGenerator {
       md += `\n`;
     } else {
       md += `_Проекты не переносились_\n\n`;
+    }
+
+    if (docEntries.length > 0) {
+      md += `### Документы базы знаний\n\n`;
+      md += `| WEEEK Doc ID | Linear Doc ID | Заголовок |\n`;
+      md += `| :--- | :--- | :--- |\n`;
+      for (const [wId, d] of docEntries) {
+        md += `| \`${wId}\` | \`${d.linearDocId}\` | ${d.title} |\n`;
+      }
+      md += `\n`;
     }
 
     md += `### Задачи (выборка первых 100)\n\n`;

@@ -14,6 +14,32 @@ export interface WeeekProject {
   isPrivate?: boolean;
 }
 
+export interface WeeekBoard {
+  id: string;
+  name: string;
+  projectId?: string | null;
+  order?: number;
+}
+
+export interface WeeekBoardColumn {
+  id: string;
+  name: string;
+  boardId?: string | null;
+  projectId?: string | null;
+  order?: number;
+  color?: string | null;
+}
+
+export interface WeeekDocument {
+  id: string;
+  title: string;
+  content?: string | null;
+  parentId?: string | null;
+  projectId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface WeeekTag {
   id: string;
   title: string;
@@ -24,6 +50,9 @@ export interface WeeekTask {
   id: string;
   parentId?: string | null;
   projectId?: string | null;
+  boardId?: string | null;
+  boardColumnId?: string | null;
+  columnId?: string | null;
   title: string;
   description?: string | null;
   date?: string | null;
@@ -34,8 +63,8 @@ export interface WeeekTask {
   priority?: WeeekPriority | number;
   isCompleted?: boolean;
   isDeleted?: boolean;
-  assignees?: Array<string | { id: string; email?: string; name?: string }>;
-  tags?: Array<string | { id: string; title?: string }>;
+  assignees?: Array<string | { id?: string; email?: string; name?: string }>;
+  tags?: Array<string | { id?: string; title?: string }>;
 }
 
 export interface WeeekTasksResponse {

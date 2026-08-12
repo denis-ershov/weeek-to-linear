@@ -4,6 +4,9 @@
  */
 
 (() => {
+  // Инициализация локализации (i18n.js должен быть подключён раньше app.js)
+  if (window.i18n) window.i18n.initLocale();
+
   // Global State
   const state = {
     currentStep: 1,
@@ -15,13 +18,20 @@
     selectedProjectIds: new Set(),
     linearTeams: [],
     selectedTeamKey: '',
+    selectedTeamId: '',
     workflowStates: [],
+    linearUsers: [],
+    weeekUsers: [],
+    boardColumns: [],
+    boardColumnMapping: {}, // weeekColId -> linearStateId
+    userMapping: {}, // weeekUserId -> linearUserId | 'unassigned' | 'skip'
     isMigrationRunning: false,
     sseSource: null,
     counters: {
       projects: 0,
       tasks: 0,
       labels: 0,
+      docs: 0,
       warnings: 0,
       errors: 0,
     },
@@ -54,10 +64,17 @@
   const btnStep2Next = document.getElementById('btn-step2-next');
 
   // Step 3 Elements
+  const boardColumnsMappingContainer = document.getElementById('board-columns-mapping-container');
+  const usersMappingContainer = document.getElementById('users-mapping-container');
+  const selectWatcherStrategy = document.getElementById('select-watcher-strategy');
+  const groupGlobalWatcher = document.getElementById('group-global-watcher');
+  const selectGlobalWatcher = document.getElementById('select-global-watcher');
   const optDryRun = document.getElementById('opt-dry-run');
+  const optCreateMissingStates = document.getElementById('opt-create-missing-states');
+  const optRenameMatchedStates = document.getElementById('opt-rename-matched-states');
+  const optRecreateColumns = document.getElementById('opt-recreate-columns');
+  const optDocuments = document.getElementById('opt-documents');
   const optCompleted = document.getElementById('opt-completed');
-  const optResume = document.getElementById('opt-resume');
-  const selectUnmatchedUser = document.getElementById('select-unmatched-user');
   const btnStartMigration = document.getElementById('btn-start-migration');
   const btnStartText = document.getElementById('btn-start-text');
 
@@ -76,6 +93,7 @@
   const cntProjects = document.getElementById('cnt-projects');
   const cntTasks = document.getElementById('cnt-tasks');
   const cntLabels = document.getElementById('cnt-labels');
+  const cntDocs = document.getElementById('cnt-docs');
   const cntWarnings = document.getElementById('cnt-warnings');
   const cntErrors = document.getElementById('cnt-errors');
 
@@ -133,7 +151,6 @@
       const res = await fetch('/api/status');
       const data = await res.json();
       if (data.hasEnvTokens.weeek || data.hasEnvTokens.linear) {
-        // Пробуем авто-тест, если токены есть в .env
         testAuthentication();
       }
     } catch {
@@ -230,10 +247,12 @@
       state.linearTeams.forEach((team, idx) => {
         const opt = document.createElement('option');
         opt.value = team.key;
+        opt.dataset.teamId = team.id;
         opt.textContent = `${team.name} [${team.key}]`;
         if (idx === 0) {
           opt.selected = true;
           state.selectedTeamKey = team.key;
+          state.selectedTeamId = team.id;
         }
         selectLinearTeam.appendChild(opt);
       });
@@ -295,6 +314,8 @@
   inputProjectSearch.addEventListener('input', renderProjectsList);
   selectLinearTeam.addEventListener('change', () => {
     state.selectedTeamKey = selectLinearTeam.value;
+    const selectedOpt = selectLinearTeam.selectedOptions[0];
+    state.selectedTeamId = selectedOpt?.dataset?.teamId || '';
     updateStep2NextButton();
   });
 
@@ -310,12 +331,229 @@
     updateStep2NextButton();
   });
 
-  btnStep2Next.addEventListener('click', () => {
+  btnStep2Next.addEventListener('click', async () => {
     goToStep(3);
     updateDryRunButtonText();
+    await loadMappingData();
   });
 
-  // Step 3: Mapping & Options
+  // Step 3: Load & Render Mapping Data
+  async function loadMappingData() {
+    boardColumnsMappingContainer.innerHTML = `
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+    `;
+    usersMappingContainer.innerHTML = `
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+    `;
+
+    try {
+      const selectedProjectIds = Array.from(state.selectedProjectIds).join(',');
+      const [colsRes, statesRes, wUsersRes, lUsersRes] = await Promise.all([
+        fetch(`/api/weeek/board-columns?token=${encodeURIComponent(state.weeekToken)}${selectedProjectIds ? `&projectIds=${encodeURIComponent(selectedProjectIds)}` : ''}`),
+        fetch(`/api/linear/states?token=${encodeURIComponent(state.linearToken)}&teamId=${state.selectedTeamId || state.selectedTeamKey}`),
+        fetch(`/api/weeek/users?token=${encodeURIComponent(state.weeekToken)}`),
+        fetch(`/api/linear/users?token=${encodeURIComponent(state.linearToken)}`),
+      ]);
+
+      const [colsData, statesData, wUsersData, lUsersData] = await Promise.all([
+        colsRes.json(),
+        statesRes.json(),
+        wUsersRes.json(),
+        lUsersRes.json(),
+      ]);
+
+      state.boardColumns = colsData.columns || [];
+      state.workflowStates = statesData.states || [];
+      state.weeekUsers = wUsersData.users || [];
+      state.linearUsers = lUsersData.users || [];
+
+      renderBoardColumnsMapping();
+      renderUsersMapping();
+      renderGlobalWatcherSelector();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // Heuristic auto-match for columns
+  function guessLinearStateId(colName, states) {
+    if (!states || states.length === 0) return '';
+    const lower = colName.toLowerCase().trim();
+
+    if (lower.includes('закрыт') || lower.includes('done') || lower.includes('завершен') || lower.includes('готов')) {
+      const s = states.find(st => st.type.toLowerCase() === 'completed');
+      if (s) return s.id;
+    }
+    if (lower.includes('архив') || lower.includes('отмен') || lower.includes('cancel')) {
+      const s = states.find(st => st.type.toLowerCase() === 'canceled') || states.find(st => st.type.toLowerCase() === 'completed');
+      if (s) return s.id;
+    }
+    if (lower.includes('тест') || lower.includes('qa') || lower.includes('ревью') || lower.includes('review')) {
+      const s = states.find(st => st.name.toLowerCase().includes('review') || st.name.toLowerCase().includes('qa')) || states.find(st => st.type.toLowerCase() === 'started');
+      if (s) return s.id;
+    }
+    if (lower.includes('в работ') || lower.includes('в процесс') || lower.includes('доработ') || lower.includes('in progress') || lower.includes('doing')) {
+      const s = states.find(st => st.type.toLowerCase() === 'started');
+      if (s) return s.id;
+    }
+    if (lower.includes('план') || lower.includes('запланирован') || lower.includes('todo') || lower.includes('не начато')) {
+      const s = states.find(st => st.type.toLowerCase() === 'unstarted') || states.find(st => st.type.toLowerCase() === 'backlog');
+      if (s) return s.id;
+    }
+    if (lower.includes('важн') || lower.includes('бэклог') || lower.includes('backlog')) {
+      const s = states.find(st => st.type.toLowerCase() === 'backlog') || states.find(st => st.type.toLowerCase() === 'unstarted');
+      if (s) return s.id;
+    }
+
+    return states[0]?.id || '';
+  }
+
+  function renderBoardColumnsMapping() {
+    boardColumnsMappingContainer.innerHTML = '';
+
+    if (!state.boardColumns || state.boardColumns.length === 0) {
+      boardColumnsMappingContainer.innerHTML = `
+        <div class="empty-state-box">
+          <p class="text-secondary">Колонки канбан-доски в WEEEK не найдены или доска пуста. Задачи будут распределены по стандартным статусам Linear.</p>
+        </div>
+      `;
+      return;
+    }
+    const autoCreate = optCreateMissingStates ? optCreateMissingStates.checked : true;
+
+    state.boardColumns.forEach(col => {
+      const item = document.createElement('div');
+      item.className = 'mapping-item-card';
+
+      const exactMatch = state.workflowStates.find(
+        st => st.name.toLowerCase() === col.name.trim().toLowerCase(),
+      );
+      const guessedStateId = guessLinearStateId(col.name, state.workflowStates);
+
+      // Если нет точного совпадения и включено автосоздание — предлагаем создать
+      let initialVal = state.boardColumnMapping[col.id];
+      if (!initialVal) {
+        if (exactMatch) {
+          initialVal = exactMatch.id;
+        } else if (autoCreate) {
+          initialVal = '__create_new__';
+        } else {
+          initialVal = guessedStateId;
+        }
+      }
+
+      state.boardColumnMapping[col.id] = initialVal;
+
+      let selectOptions = `<option value="__create_new__" ${initialVal === '__create_new__' ? 'selected' : ''}>➕ Создать в Linear: "${escapeHtml(col.name)}"</option>`;
+      state.workflowStates.forEach(st => {
+        const selected = st.id === initialVal ? 'selected' : '';
+        selectOptions += `<option value="${st.id}" ${selected}>${escapeHtml(st.name)} (${st.type})</option>`;
+      });
+
+      item.innerHTML = `
+        <div class="mapping-from">
+          <span>${escapeHtml(col.name)}</span>
+        </div>
+        <span class="mapping-arrow">→</span>
+        <div class="mapping-select-wrapper">
+          <select class="custom-select col-select" data-col-id="${col.id}">
+            ${selectOptions}
+          </select>
+        </div>
+      `;
+
+      item.querySelector('.col-select').addEventListener('change', (e) => {
+        state.boardColumnMapping[col.id] = e.target.value;
+      });
+
+      boardColumnsMappingContainer.appendChild(item);
+    });
+  }
+
+  optCreateMissingStates?.addEventListener('change', () => {
+    // Сбрасываем маппинг колонок и перерендериваем
+    state.boardColumnMapping = {};
+    renderBoardColumnsMapping();
+  });
+
+  function renderUsersMapping() {
+    if (state.weeekUsers.length === 0 && state.weeekUser) {
+      state.weeekUsers = [state.weeekUser];
+    }
+
+    if (state.weeekUsers.length === 0) {
+      usersMappingContainer.innerHTML = `<p class="text-secondary" style="padding: 8px 0;">Пользователи WEEEK не найдены</p>`;
+      return;
+    }
+
+    usersMappingContainer.innerHTML = '';
+    state.weeekUsers.forEach(wUser => {
+      const item = document.createElement('div');
+      item.className = 'user-mapping-item';
+
+      // Auto-match by email
+      const matchedLinearUser = state.linearUsers.find(
+        lu => lu.email && wUser.email && lu.email.toLowerCase() === wUser.email.toLowerCase(),
+      );
+
+      const initialVal = matchedLinearUser ? matchedLinearUser.id : 'unassigned';
+      state.userMapping[wUser.id] = initialVal;
+
+      let userOptions = `
+        <option value="unassigned" ${initialVal === 'unassigned' ? 'selected' : ''}>Без исполнителя (Unassigned)</option>
+        <option value="skip">Пропускать задачи этого автора</option>
+      `;
+
+      state.linearUsers.forEach(lu => {
+        const isSel = lu.id === initialVal ? 'selected' : '';
+        userOptions += `<option value="${lu.id}" ${isSel}>${escapeHtml(lu.name)} (${escapeHtml(lu.email)})</option>`;
+      });
+
+      item.innerHTML = `
+        <div class="user-info-left">
+          <div class="user-avatar-mini">${(wUser.name || 'W').charAt(0).toUpperCase()}</div>
+          <div>
+            <strong>${escapeHtml(wUser.name || 'Пользователь')}</strong>
+            <div class="text-secondary" style="font-size: 11px;">${escapeHtml(wUser.email || 'Без email')}</div>
+          </div>
+        </div>
+        <span class="mapping-arrow">→</span>
+        <div class="mapping-select-wrapper">
+          <select class="custom-select user-select" data-user-id="${wUser.id}">
+            ${userOptions}
+          </select>
+        </div>
+      `;
+
+      item.querySelector('.user-select').addEventListener('change', (e) => {
+        state.userMapping[wUser.id] = e.target.value;
+      });
+
+      usersMappingContainer.appendChild(item);
+    });
+  }
+
+  function renderGlobalWatcherSelector() {
+    selectGlobalWatcher.innerHTML = '<option value="">Выберите сотрудника Linear...</option>';
+    state.linearUsers.forEach(lu => {
+      const opt = document.createElement('option');
+      opt.value = lu.id;
+      opt.textContent = `${lu.name} (${lu.email})`;
+      selectGlobalWatcher.appendChild(opt);
+    });
+  }
+
+  selectWatcherStrategy.addEventListener('change', () => {
+    const strat = selectWatcherStrategy.value;
+    if (strat === 'global_watcher' || strat === 'both') {
+      groupGlobalWatcher.classList.remove('hidden');
+    } else {
+      groupGlobalWatcher.classList.add('hidden');
+    }
+  });
+
   function updateDryRunButtonText() {
     if (optDryRun.checked) {
       btnStartText.textContent = 'Запустить Dry Run (Симуляция)';
@@ -355,7 +593,7 @@
 
   async function startMigration() {
     state.isMigrationRunning = true;
-    state.counters = { projects: 0, tasks: 0, labels: 0, warnings: 0, errors: 0 };
+    state.counters = { projects: 0, tasks: 0, labels: 0, docs: 0, warnings: 0, errors: 0 };
     updateCounters();
 
     btnStopMigration.disabled = false;
@@ -381,14 +619,23 @@
       }
     };
 
+    const selectedSyncStrategy = document.querySelector('input[name="syncStrategy"]:checked')?.value || 'skip';
+
     const payload = {
       weeekToken: state.weeekToken,
       linearToken: state.linearToken,
       linearTeamKey: state.selectedTeamKey,
       dryRun: optDryRun.checked,
-      resume: optResume.checked,
       includeCompleted: optCompleted.checked,
-      unmatchedUserStrategy: selectUnmatchedUser.value,
+      includeDocuments: optDocuments.checked,
+      createMissingStates: optCreateMissingStates ? optCreateMissingStates.checked : true,
+      renameMatchedStates: optRenameMatchedStates ? optRenameMatchedStates.checked : false,
+      recreateAllColumns: optRecreateColumns ? optRecreateColumns.checked : false,
+      boardColumnMapping: state.boardColumnMapping,
+      userMapping: state.userMapping,
+      watcherStrategy: selectWatcherStrategy.value,
+      globalWatcherUserId: selectGlobalWatcher.value || undefined,
+      syncStrategy: selectedSyncStrategy,
       weeekProjectId: state.selectedProjectIds.size === 1 ? Array.from(state.selectedProjectIds)[0] : undefined,
     };
 
@@ -426,6 +673,7 @@
       if (data.progressType === 'projects') state.counters.projects = current;
       if (data.progressType === 'tasks') state.counters.tasks = current;
       if (data.progressType === 'labels') state.counters.labels = current;
+      if (data.progressType === 'documents') state.counters.docs = current;
       updateCounters();
     } else if (data.type === 'warning') {
       state.counters.warnings++;
@@ -459,6 +707,7 @@
     cntProjects.textContent = state.counters.projects;
     cntTasks.textContent = state.counters.tasks;
     cntLabels.textContent = state.counters.labels;
+    cntDocs.textContent = state.counters.docs;
     cntWarnings.textContent = state.counters.warnings;
     cntErrors.textContent = state.counters.errors;
   }
@@ -505,8 +754,16 @@
             <span class="counter-label">Создано задач</span>
           </div>
           <div class="counter-card">
+            <span class="counter-num counter-primary">${summary.tasks.updated || 0}</span>
+            <span class="counter-label">Обновлено задач</span>
+          </div>
+          <div class="counter-card">
             <span class="counter-num counter-purple">${summary.labels.created}</span>
             <span class="counter-label">Создано меток</span>
+          </div>
+          <div class="counter-card">
+            <span class="counter-num counter-primary">${summary.documents?.created || 0}</span>
+            <span class="counter-label">Создано документов</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-warning">${summary.tasks.skipped}</span>
