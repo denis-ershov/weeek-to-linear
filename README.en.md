@@ -153,7 +153,7 @@ pnpm cli migrate
 | `--unmatched-user <strategy>` | Action for unmatched users: `unassigned` (default), `skip`, `abort` |
 | `--column-mapping <json>` | JSON column mapping string (e.g. `'{"col_1":"st_1"}'`) |
 | `--user-mapping <json>` | JSON user mapping string (e.g. `'{"usr_w":"usr_lin"}'`) |
-| `-l, --lang <ru|en>` | CLI interface language (`ru` or `en`, default `ru` or from `WEEEK_LANG`) |
+| `-l, --lang <ru\|en>` | CLI interface language (`ru` or `en`, default `ru` or from `WEEEK_LANG`) |
 
 ---
 
