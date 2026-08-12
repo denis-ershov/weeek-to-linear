@@ -322,4 +322,87 @@ export interface I18nDictionary {
       browserOpenError: string;
     };
   };
+
+  // Стадии и ошибки MigrationEngine
+  engine: {
+    stages: {
+      auth: string;
+      loadingData: string;
+      preflight: string;
+      mappingUsers: string;
+      mappingStates: string;
+      mappingLabels: string;
+      creatingStates: string;
+      resolvingHierarchy: string;
+      migratingTasks: string;
+      migratingDocs: string;
+      generatingReport: string;
+    };
+    errors: {
+      teamNotFoundKey: string;
+      teamNotFound: string;
+      userNotMapped: string;
+      taskCreateError: string;
+      docCreateError: string;
+    };
+  };
+
+  // Сообщения PreflightValidator
+  validator: {
+    weeekAuthError: string;
+    linearAuthError: string;
+    teamNotFound: string;
+    teamFetchError: string;
+    userNotFound: string;
+    invalidDate: string;
+    invalidDateEnd: string;
+    dataFetchError: string;
+  };
+
+  // Сообщения Data Mapper
+  mapper: {
+    userNotFoundByEmail: string;
+    userNotMapped: string;
+  };
+
+  // Ошибки и ответы REST API сервера
+  server: {
+    bodyTooLarge: string;
+    invalidJson: string;
+    tokensRequired: string;
+    weeekTokenRequired: string;
+    linearTokenRequired: string;
+    teamIdRequired: string;
+    defaultUserName: string;
+    internalError: string;
+  };
+
+  // Итоговый Markdown отчёт (ReportGenerator)
+  reporter: {
+    title: string;
+    date: string;
+    duration: string;
+    seconds: string;
+    summaryTitle: string;
+    entityHeader: string;
+    totalHeader: string;
+    createdHeader: string;
+    updatedHeader: string;
+    skippedHeader: string;
+    errorsHeader: string;
+    projects: string;
+    tasks: string;
+    labels: string;
+    documents: string;
+    parentsResolved: string;
+    warningsTitle: string;
+    errorsTitle: string;
+    mappingTitle: string;
+    projectsTitle: string;
+    noProjects: string;
+    docsTitle: string;
+    tasksTitle: string;
+    moreTasksNote: string;
+  };
 }
+

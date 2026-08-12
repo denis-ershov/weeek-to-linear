@@ -154,7 +154,7 @@
         testAuthentication();
       }
     } catch {
-      showAlert('Не удалось связаться с локальным сервером', 'error');
+      showAlert(window.i18n.t('auth.serverError'), 'error');
     }
   }
 
@@ -165,8 +165,8 @@
 
     btnTestAuth.disabled = true;
     btnTestAuth.querySelector('.btn-spinner')?.classList.remove('hidden');
-    statusWeeek.textContent = 'Проверка...';
-    statusLinear.textContent = 'Проверка...';
+    statusWeeek.textContent = window.i18n.t('status.checking');
+    statusLinear.textContent = window.i18n.t('status.checking');
 
     try {
       const res = await fetch('/api/auth/test', {
@@ -177,7 +177,7 @@
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Ошибка проверки авторизации');
+        throw new Error(data.error || window.i18n.t('auth.failed'));
       }
 
       state.weeekUser = data.weeekUser;
@@ -187,24 +187,24 @@
 
       // Update UI
       statusWeeek.className = 'status-indicator ok';
-      statusWeeek.textContent = '✓ Подключено';
+      statusWeeek.textContent = window.i18n.t('status.connected');
       document.getElementById('weeek-user-name').textContent = data.weeekUser.name;
       document.getElementById('weeek-user-email').textContent = data.weeekUser.email;
       weeekUserInfo.classList.remove('hidden');
 
       statusLinear.className = 'status-indicator ok';
-      statusLinear.textContent = '✓ Подключено';
+      statusLinear.textContent = window.i18n.t('status.connected');
       document.getElementById('linear-user-name').textContent = data.linearViewer.name;
       document.getElementById('linear-user-org').textContent = data.linearViewer.organizationName || data.linearViewer.email;
       linearUserInfo.classList.remove('hidden');
 
       btnStep1Next.disabled = false;
-      showAlert('Подключение к WEEEK и Linear успешно установлено!', 'success');
+      showAlert(window.i18n.t('auth.success'), 'success');
     } catch (err) {
       statusWeeek.className = 'status-indicator fail';
-      statusWeeek.textContent = '✗ Ошибка';
+      statusWeeek.textContent = window.i18n.t('status.error');
       statusLinear.className = 'status-indicator fail';
-      statusLinear.textContent = '✗ Ошибка';
+      statusLinear.textContent = window.i18n.t('status.error');
       showAlert(err.message, 'error');
     } finally {
       btnTestAuth.disabled = false;
@@ -236,8 +236,8 @@
       const projectsData = await projectsRes.json();
       const teamsData = await teamsRes.json();
 
-      if (!projectsRes.ok) throw new Error(projectsData.error || 'Ошибка загрузки проектов');
-      if (!teamsRes.ok) throw new Error(teamsData.error || 'Ошибка загрузки команд Linear');
+      if (!projectsRes.ok) throw new Error(projectsData.error || window.i18n.t('step2.projectsError'));
+      if (!teamsRes.ok) throw new Error(teamsData.error || window.i18n.t('step2.teamsError'));
 
       state.projects = projectsData.projects || [];
       state.linearTeams = teamsData.teams || [];
@@ -273,7 +273,7 @@
     );
 
     if (filtered.length === 0) {
-      projectsListContainer.innerHTML = `<div class="empty-state"><p>Проекты не найдены</p></div>`;
+      projectsListContainer.innerHTML = `<div class="empty-state"><p>${window.i18n.t('step2.notFound')}</p></div>`;
       return;
     }
 
@@ -287,9 +287,9 @@
           <span class="project-title">${escapeHtml(project.name)}</span>
           <span class="badge badge-version">ID: ${project.id}</span>
         </div>
-        <p class="project-desc">${escapeHtml(project.description || 'Без описания')}</p>
+        <p class="project-desc">${escapeHtml(project.description || window.i18n.t('step2.noDesc'))}</p>
         <div class="project-meta">
-          <span>${isSelected ? '✓ Выбран' : 'Нажмите для выбора'}</span>
+          <span>${isSelected ? window.i18n.t('step2.selected') : window.i18n.t('step2.clickToSelect')}</span>
         </div>
       `;
 
@@ -416,7 +416,7 @@
     if (!state.boardColumns || state.boardColumns.length === 0) {
       boardColumnsMappingContainer.innerHTML = `
         <div class="empty-state-box">
-          <p class="text-secondary">Колонки канбан-доски в WEEEK не найдены или доска пуста. Задачи будут распределены по стандартным статусам Linear.</p>
+          <p class="text-secondary">${window.i18n.t('step3.noColumns')}</p>
         </div>
       `;
       return;
@@ -446,7 +446,7 @@
 
       state.boardColumnMapping[col.id] = initialVal;
 
-      let selectOptions = `<option value="__create_new__" ${initialVal === '__create_new__' ? 'selected' : ''}>➕ Создать в Linear: "${escapeHtml(col.name)}"</option>`;
+      let selectOptions = `<option value="__create_new__" ${initialVal === '__create_new__' ? 'selected' : ''}>${window.i18n.t('step3.createStatePrefix')}"${escapeHtml(col.name)}"</option>`;
       state.workflowStates.forEach(st => {
         const selected = st.id === initialVal ? 'selected' : '';
         selectOptions += `<option value="${st.id}" ${selected}>${escapeHtml(st.name)} (${st.type})</option>`;
@@ -484,7 +484,7 @@
     }
 
     if (state.weeekUsers.length === 0) {
-      usersMappingContainer.innerHTML = `<p class="text-secondary" style="padding: 8px 0;">Пользователи WEEEK не найдены</p>`;
+      usersMappingContainer.innerHTML = `<p class="text-secondary" style="padding: 8px 0;">${window.i18n.t('step3.noUsers')}</p>`;
       return;
     }
 
@@ -502,8 +502,8 @@
       state.userMapping[wUser.id] = initialVal;
 
       let userOptions = `
-        <option value="unassigned" ${initialVal === 'unassigned' ? 'selected' : ''}>Без исполнителя (Unassigned)</option>
-        <option value="skip">Пропускать задачи этого автора</option>
+        <option value="unassigned" ${initialVal === 'unassigned' ? 'selected' : ''}>${window.i18n.t('step3.unassigned')}</option>
+        <option value="skip">${window.i18n.t('step3.skipUserTasks')}</option>
       `;
 
       state.linearUsers.forEach(lu => {
@@ -511,12 +511,16 @@
         userOptions += `<option value="${lu.id}" ${isSel}>${escapeHtml(lu.name)} (${escapeHtml(lu.email)})</option>`;
       });
 
+      const rawName = wUser.name && wUser.name !== 'Пользователь' ? wUser.name : '';
+      const displayName = rawName || window.i18n.t('step3.defaultUserName');
+      const avatarChar = (rawName || displayName || 'U').charAt(0).toUpperCase();
+
       item.innerHTML = `
         <div class="user-info-left">
-          <div class="user-avatar-mini">${(wUser.name || 'W').charAt(0).toUpperCase()}</div>
+          <div class="user-avatar-mini">${avatarChar}</div>
           <div>
-            <strong>${escapeHtml(wUser.name || 'Пользователь')}</strong>
-            <div class="text-secondary" style="font-size: 11px;">${escapeHtml(wUser.email || 'Без email')}</div>
+            <strong>${escapeHtml(displayName)}</strong>
+            <div class="text-secondary" style="font-size: 11px;">${escapeHtml(wUser.email || window.i18n.t('step3.noEmail'))}</div>
           </div>
         </div>
         <span class="mapping-arrow">→</span>
@@ -536,7 +540,7 @@
   }
 
   function renderGlobalWatcherSelector() {
-    selectGlobalWatcher.innerHTML = '<option value="">Выберите сотрудника Linear...</option>';
+    selectGlobalWatcher.innerHTML = `<option value="">${window.i18n.t('step3.selectWatcherPlaceholder')}</option>`;
     state.linearUsers.forEach(lu => {
       const opt = document.createElement('option');
       opt.value = lu.id;
@@ -556,10 +560,10 @@
 
   function updateDryRunButtonText() {
     if (optDryRun.checked) {
-      btnStartText.textContent = 'Запустить Dry Run (Симуляция)';
+      btnStartText.textContent = window.i18n.t('step3.btnDryRun');
       btnStartMigration.className = 'btn btn-secondary';
     } else {
-      btnStartText.textContent = 'Начать реальную миграцию';
+      btnStartText.textContent = window.i18n.t('step3.btnReal');
       btnStartMigration.className = 'btn btn-success';
     }
   }
@@ -600,9 +604,9 @@
     btnStep4Next.classList.add('hidden');
     liveProgressBar.style.width = '0%';
     liveProgressPct.textContent = '0%';
-    liveStageBadge.textContent = 'Стадия 1';
-    liveStageName.textContent = 'Инициализация миграции...';
-    appendLog('Запуск миграционного конвейера...', 'stage');
+    liveStageBadge.textContent = `${window.i18n.t('step4.stagePrefix')}1`;
+    liveStageName.textContent = window.i18n.t('step4.init');
+    appendLog(window.i18n.t('step4.startLog'), 'stage');
 
     // Connect SSE
     if (state.sseSource) {
@@ -648,10 +652,10 @@
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Ошибка запуска миграции');
+        throw new Error(data.error || window.i18n.t('step4.startError'));
       }
     } catch (err) {
-      appendLog(`Ошибка старта: ${err.message}`, 'error');
+      appendLog(`${window.i18n.t('step4.startError')}${err.message}`, 'error');
       state.isMigrationRunning = false;
       btnStopMigration.disabled = true;
     }
@@ -659,16 +663,16 @@
 
   function handleSseEvent(data) {
     if (data.type === 'stage') {
-      liveStageBadge.textContent = `Стадия ${data.stageNumber || 1}`;
+      liveStageBadge.textContent = `${window.i18n.t('step4.stagePrefix')}${data.stageNumber || 1}`;
       liveStageName.textContent = data.stageName;
-      appendLog(`[СТАДИЯ ${data.stageNumber || 1}] ${data.stageName}`, 'stage');
+      appendLog(`[${window.i18n.t('step4.stagePrefix').toUpperCase()}${data.stageNumber || 1}] ${data.stageName}`, 'stage');
     } else if (data.type === 'progress') {
       const current = data.current || 0;
       const total = data.total || 1;
       const pct = Math.round((current / total) * 100);
       liveProgressBar.style.width = `${pct}%`;
       liveProgressPct.textContent = `${pct}%`;
-      liveCurrentItem.textContent = data.itemName || 'Обработка...';
+      liveCurrentItem.textContent = data.itemName || window.i18n.t('step4.processingItem');
 
       if (data.progressType === 'projects') state.counters.projects = current;
       if (data.progressType === 'tasks') state.counters.tasks = current;
@@ -690,15 +694,15 @@
       btnStep4Next.classList.remove('hidden');
       liveProgressBar.style.width = '100%';
       liveProgressPct.textContent = '100%';
-      liveStageName.textContent = 'Миграция успешно завершена!';
-      appendLog('✓ Миграция завершена. Итоговые отчеты сформированы.', 'stage');
+      liveStageName.textContent = window.i18n.t('step4.finishedTitle');
+      appendLog(window.i18n.t('step4.finishedLog'), 'stage');
       state.latestReport = data.summary;
       if (state.sseSource) state.sseSource.close();
     } else if (data.type === 'aborted') {
       state.isMigrationRunning = false;
       btnStopMigration.disabled = true;
-      liveStageName.textContent = 'Процесс остановлен пользователем';
-      appendLog('Миграция прервана.', 'warn');
+      liveStageName.textContent = window.i18n.t('step4.abortedTitle');
+      appendLog(window.i18n.t('step4.abortedLog'), 'warn');
       if (state.sseSource) state.sseSource.close();
     }
   }
@@ -713,7 +717,7 @@
   }
 
   btnStopMigration.addEventListener('click', async () => {
-    if (!confirm('Вы уверены, что хотите остановить миграцию?')) return;
+    if (!confirm(window.i18n.t('step4.confirmStop'))) return;
     try {
       await fetch('/api/migrate/stop', { method: 'POST' });
     } catch {
@@ -739,39 +743,39 @@
       if (summary) {
         reportMetaInfo.innerHTML = `
           <div class="meta-row">
-            <span><strong>Дата запуска:</strong> ${new Date(summary.startedAt).toLocaleString('ru-RU')}</span>
-            <span><strong>Длительность:</strong> ${summary.durationSeconds.toFixed(1)} сек.</span>
+            <span><strong>${window.i18n.t('step5.startDate')}</strong> ${new Date(summary.startedAt).toLocaleString(window.i18n.getLocale() === 'ru' ? 'ru-RU' : 'en-US')}</span>
+            <span><strong>${window.i18n.t('step5.duration')}</strong> ${summary.durationSeconds.toFixed(1)} ${window.i18n.t('step5.sec')}</span>
           </div>
         `;
 
         reportCounters.innerHTML = `
           <div class="counter-card">
             <span class="counter-num counter-primary">${summary.projects.created}</span>
-            <span class="counter-label">Создано проектов</span>
+            <span class="counter-label">${window.i18n.t('step5.createdProjects')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-success">${summary.tasks.created}</span>
-            <span class="counter-label">Создано задач</span>
+            <span class="counter-label">${window.i18n.t('step5.createdTasks')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-primary">${summary.tasks.updated || 0}</span>
-            <span class="counter-label">Обновлено задач</span>
+            <span class="counter-label">${window.i18n.t('step5.updatedTasks')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-purple">${summary.labels.created}</span>
-            <span class="counter-label">Создано меток</span>
+            <span class="counter-label">${window.i18n.t('step5.createdLabels')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-primary">${summary.documents?.created || 0}</span>
-            <span class="counter-label">Создано документов</span>
+            <span class="counter-label">${window.i18n.t('step5.createdDocs')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-warning">${summary.tasks.skipped}</span>
-            <span class="counter-label">Пропущено задач</span>
+            <span class="counter-label">${window.i18n.t('step5.skippedTasks')}</span>
           </div>
           <div class="counter-card">
             <span class="counter-num counter-error">${summary.errors.length}</span>
-            <span class="counter-label">Ошибок</span>
+            <span class="counter-label">${window.i18n.t('step5.errorsCount')}</span>
           </div>
         `;
       }
@@ -791,7 +795,7 @@
     );
 
     if (entries.length === 0) {
-      reportMappingContainer.innerHTML = '<p class="text-secondary" style="padding: 16px;">Записи не найдены</p>';
+      reportMappingContainer.innerHTML = `<p class="text-secondary" style="padding: 16px;">${window.i18n.t('step5.noEntries')}</p>`;
       return;
     }
 
@@ -799,9 +803,9 @@
       <table class="mapping-table">
         <thead>
           <tr>
-            <th>WEEEK ID</th>
-            <th>Linear Key / ID</th>
-            <th>Название задачи</th>
+            <th>${window.i18n.t('step5.thWeeekId')}</th>
+            <th>${window.i18n.t('step5.thLinearKey')}</th>
+            <th>${window.i18n.t('step5.thTaskTitle')}</th>
           </tr>
         </thead>
         <tbody>
@@ -864,6 +868,25 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
+
+  // Реакция на переключение языка
+  window.addEventListener('localeChanged', () => {
+    if (state.currentStep === 1) {
+      if (state.weeekUser && state.linearViewer) {
+        statusWeeek.textContent = window.i18n.t('status.connected');
+        statusLinear.textContent = window.i18n.t('status.connected');
+      }
+    } else if (state.currentStep === 2) {
+      renderProjectsList();
+    } else if (state.currentStep === 3) {
+      renderBoardColumnsMapping();
+      renderUsersMapping();
+      renderGlobalWatcherSelector();
+      updateDryRunButtonText();
+    } else if (state.currentStep === 5) {
+      loadReport();
+    }
+  });
 
   // Initialize App on DOM Load
   initApp();

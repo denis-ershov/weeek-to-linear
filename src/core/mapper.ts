@@ -9,6 +9,7 @@ import type {
 } from '../clients/linear/types.js';
 import { formatLinearDueDate } from '../utils/dates.js';
 import { normalizeDescriptionToMarkdown } from '../utils/markdown.js';
+import { tf } from '../i18n/index.js';
 
 export interface MappingContext {
   teamId: string;
@@ -266,10 +267,10 @@ export function resolveAssignee(
     if (matched) {
       return { assigneeId: matched.id };
     }
-    return { warning: `Пользователь с email "${email}" не найден в Linear организации` };
+    return { warning: tf('mapper.userNotFoundByEmail', email) };
   }
 
-  return { warning: `Не удалось сопоставить пользователя WEEEK: ${JSON.stringify(rawAssignee)}` };
+  return { warning: tf('mapper.userNotMapped', JSON.stringify(rawAssignee)) };
 }
 
 /**

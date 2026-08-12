@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import { CONSTANTS } from '../../config/constants.js';
 
 /**
  * Дизайн-система и цветовая палитра терминала (Linear / Dark theme style)
@@ -31,7 +32,7 @@ export function printBanner(): void {
   );
   console.info(
     theme.primary('  ██║    ██║██╔════╝██╔════╝██╔════╝██║ ██╔╝   ') +
-      theme.dim('Migration Tool v0.1.0'),
+      theme.dim(`Migration Tool v${CONSTANTS.APP_VERSION}`),
   );
   console.info(
     theme.primary('  ██║ █╗ ██║█████╗  █████╗  █████╗  █████╔╝    ') +

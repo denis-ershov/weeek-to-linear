@@ -8,6 +8,7 @@ import type { WeeekBoardColumn, WeeekDocument } from '../clients/weeek/types.js'
 import { LinearClient } from '../clients/linear/client.js';
 import { MigrationEngine } from '../core/engine.js';
 import { StateManager } from '../core/state.js';
+import { t, tf } from '../i18n/index.js';
 import type {
   ServerStatusResponse,
   AuthTestRequest,
@@ -67,14 +68,14 @@ export class ApiRouter {
       req.on('data', chunk => {
         body += chunk;
         if (body.length > 1024 * 1024) {
-          reject(new Error('Размер тела запроса превышает 1MB'));
+          reject(new Error(t('server.bodyTooLarge')));
         }
       });
       req.on('end', () => {
         try {
           resolve(body ? JSON.parse(body) : ({} as T));
         } catch (err) {
-          reject(new Error(`Невалидный JSON: ${(err as Error).message}`));
+          reject(new Error(tf('server.invalidJson', (err as Error).message)));
         }
       });
       req.on('error', reject);
@@ -136,7 +137,7 @@ export class ApiRouter {
         if (!weeekToken || !linearToken) {
           this.sendJson(res, 400, {
             success: false,
-            error: 'Необходимо указать токены WEEEK и Linear',
+            error: t('server.tokensRequired'),
           });
           return true;
         }
@@ -153,7 +154,7 @@ export class ApiRouter {
           success: true,
           weeekUser: {
             id: weeekUser.id,
-            name: weeekUser.name || 'Пользователь',
+            name: weeekUser.name || t('server.defaultUserName'),
             email: weeekUser.email,
           },
           linearViewer: {
@@ -179,7 +180,7 @@ export class ApiRouter {
       try {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
         if (!token) {
-          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
         }
         const client = new WeeekClient({ apiToken: token });
@@ -197,7 +198,7 @@ export class ApiRouter {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
         const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
         if (!token) {
-          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
         }
         const client = new WeeekClient({ apiToken: token });
@@ -237,7 +238,7 @@ export class ApiRouter {
       try {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
         if (!token) {
-          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
         }
         const client = new WeeekClient({ apiToken: token });
@@ -255,18 +256,18 @@ export class ApiRouter {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
         const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
         if (!token) {
-          this.sendJson(res, 400, { error: 'WEEEK API токен не указан' });
+          this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
         }
         const client = new WeeekClient({ apiToken: token });
         const allDocs: WeeekDocument[] = [];
-        const seenIds = new Set<string>();
+        const seenDocIds = new Set<string>();
 
         // 1. Документы рабочего пространства
         const wsDocs = await client.getDocuments();
         for (const d of wsDocs) {
-          if (!seenIds.has(d.id)) {
-            seenIds.add(d.id);
+          if (!seenDocIds.has(d.id)) {
+            seenDocIds.add(d.id);
             allDocs.push(d);
           }
         }
@@ -277,8 +278,8 @@ export class ApiRouter {
           for (const pid of pIds) {
             const pDocs = await client.getDocuments({ projectId: pid });
             for (const d of pDocs) {
-              if (!seenIds.has(d.id)) {
-                seenIds.add(d.id);
+              if (!seenDocIds.has(d.id)) {
+                seenDocIds.add(d.id);
                 allDocs.push(d);
               }
             }
@@ -297,7 +298,7 @@ export class ApiRouter {
       try {
         const token = url.searchParams.get('token') || getAppConfig().LINEAR_API_TOKEN;
         if (!token) {
-          this.sendJson(res, 400, { error: 'Linear API токен не указан' });
+          this.sendJson(res, 400, { error: t('server.linearTokenRequired') });
           return true;
         }
         const client = new LinearClient({ apiToken: token });
@@ -315,7 +316,7 @@ export class ApiRouter {
         const token = url.searchParams.get('token') || getAppConfig().LINEAR_API_TOKEN;
         const teamId = url.searchParams.get('teamId');
         if (!token || !teamId) {
-          this.sendJson(res, 400, { error: 'Токен Linear и teamId обязательны' });
+          this.sendJson(res, 400, { error: t('server.teamIdRequired') });
           return true;
         }
         const client = new LinearClient({ apiToken: token });

@@ -12,7 +12,7 @@ import {
 } from './mapper.js';
 import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
-import { tf } from '../i18n/index.js';
+import { t, tf } from '../i18n/index.js';
 import { normalizeDocumentContentToMarkdown } from '../utils/markdown.js';
 import type {
   MigrationOptions,
@@ -92,7 +92,7 @@ export class MigrationEngine {
     }
 
     // 1. Аутентификация
-    this.hooks.onStage?.(1, 'Аутентификация в API WEEEK и Linear');
+    this.hooks.onStage?.(1, t('engine.stages.auth'));
     const [weeekMe, linearViewer] = await Promise.all([
       this.weeekClient.getMe(),
       this.linearClient.getViewer(),
@@ -112,13 +112,13 @@ export class MigrationEngine {
       : linearTeams[0];
 
     if (!targetTeam) {
-      throw new Error(`Целевая команда Linear не найдена: ${options.linearTeamKey || 'список пуст'}`);
+      throw new Error(tf('engine.errors.teamNotFoundKey', options.linearTeamKey || ''));
     }
 
     this.stateManager.setTargetTeamId(targetTeam.id);
 
     // 2-5. Загрузка данных WEEEK
-    this.hooks.onStage?.(2, 'Загрузка проектов, колонок и метаданных из WEEEK');
+    this.hooks.onStage?.(2, t('engine.stages.loadingData'));
     const [allWeeekProjects, weeekUsers, weeekTags] = await Promise.all([
       options.weeekProjectId
         ? [await this.weeekClient.getProject(options.weeekProjectId)]
@@ -128,7 +128,7 @@ export class MigrationEngine {
     ]);
 
     // 6-9. Загрузка данных Linear
-    this.hooks.onStage?.(3, 'Загрузка команды, статусов и пользователей из Linear');
+    this.hooks.onStage?.(3, t('engine.stages.preflight'));
     const [workflowStates, linearUsers, existingLinearLabels, existingLinearProjects] =
       await Promise.all([
         this.linearClient.getWorkflowStates(targetTeam.id),
@@ -151,7 +151,7 @@ export class MigrationEngine {
     }
 
     // 10. Загрузка задач, колонок и документов WEEEK
-    this.hooks.onStage?.(4, 'Загрузка задач, колонок и документов из WEEEK');
+    this.hooks.onStage?.(4, t('engine.stages.loadingData'));
     const allWeeekTasks: WeeekTask[] = [];
     const allWeeekDocs: WeeekDocument[] = [];
     const allWeeekColumns: WeeekBoardColumn[] = [];
@@ -205,7 +205,7 @@ export class MigrationEngine {
 
     // Режим DRY RUN: расчет без создания сущностей
     if (options.dryRun) {
-      this.hooks.onStage?.(5, 'Режим DRY RUN: Проверка соответствия данных без отправки изменений');
+      this.hooks.onStage?.(5, t('engine.stages.preflight'));
       for (const wTag of weeekTags) {
         const found = existingLinearLabels.some(l => l.name.toLowerCase() === wTag.title.toLowerCase());
         if (found) summary.labels.reused++;
@@ -228,7 +228,7 @@ export class MigrationEngine {
     }
 
     // 11. Создание проектов Linear
-    this.hooks.onStage?.(6, 'Перенос проектов в Linear');
+    this.hooks.onStage?.(6, t('engine.stages.migratingProjects'));
     let projectIndex = 0;
     for (const wProject of allWeeekProjects) {
       projectIndex++;
@@ -270,7 +270,7 @@ export class MigrationEngine {
 
     // 12. Создание документов базы знаний (Knowledge Base)
     if (options.includeDocuments !== false && allWeeekDocs.length > 0) {
-      this.hooks.onStage?.(7, 'Перенос документов базы знаний в Linear');
+      this.hooks.onStage?.(7, t('engine.stages.migratingDocs'));
       let docIndex = 0;
       for (const wDoc of allWeeekDocs) {
         docIndex++;
@@ -477,7 +477,7 @@ export class MigrationEngine {
     }
 
     // 14-16. Разрешение иерархии и перенос задач
-    this.hooks.onStage?.(9, 'Топологическая сортировка задач и подзадач');
+    this.hooks.onStage?.(9, t('engine.stages.resolvingHierarchy'));
     const { rootTasks, nestedTasksByLevel } = RelationshipResolver.groupTasksByHierarchy(allWeeekTasks);
 
     const mappingContext: MappingContext = {
@@ -601,13 +601,13 @@ export class MigrationEngine {
     };
 
     // 14. Фаза 1: Перенос корневых задач
-    this.hooks.onStage?.(10, 'Создание корневых задач в Linear');
+    this.hooks.onStage?.(10, t('engine.stages.migratingTasks'));
     for (const rootTask of rootTasks) {
       await migrateSingleTask(rootTask);
     }
 
     // 15. Фаза 2: Перенос подзадач по уровням вложенности
-    this.hooks.onStage?.(11, 'Создание подзадач с сохранением связей');
+    this.hooks.onStage?.(11, t('engine.stages.migratingTasks'));
     for (const levelTasks of nestedTasksByLevel) {
       for (const nestedTask of levelTasks) {
         await migrateSingleTask(nestedTask);
@@ -615,7 +615,7 @@ export class MigrationEngine {
     }
 
     // 20. Генерация отчетов
-    this.hooks.onStage?.(12, 'Генерация отчетов миграции');
+    this.hooks.onStage?.(12, t('engine.stages.generatingReport'));
     summary.finishedAt = new Date().toISOString();
     summary.durationSeconds = (Date.now() - startTimeMs) / 1000;
 

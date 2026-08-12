@@ -235,7 +235,7 @@ export const ru: I18nDictionary = {
     },
 
     footer: {
-      text: 'WEEEK → Linear Migration Tool • Open Source under MIT License',
+      text: 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
       github: 'GitHub Репозиторий',
     },
 
@@ -300,4 +300,82 @@ export const ru: I18nDictionary = {
       browserOpenError: 'Failed to open browser automatically: %s',
     },
   },
+
+  engine: {
+    stages: {
+      auth: 'Аутентификация в API WEEEK и Linear',
+      loadingData: 'Загрузка метаданных WEEEK и Linear',
+      preflight: 'Валидация перед миграцией (Preflight)',
+      mappingUsers: 'Сопоставление пользователей (Assignees)',
+      mappingStates: 'Сопоставление статусов и канбан-колонок',
+      mappingLabels: 'Перенос тегов и меток',
+      creatingStates: 'Создание отсутствующих статусов в Linear',
+      resolvingHierarchy: 'Топологическая сортировка задач и подзадач',
+      migratingTasks: 'Перенос задач в Linear',
+      migratingDocs: 'Перенос документов базы знаний (Knowledge Base)',
+      generatingReport: 'Генерация отчетов',
+    },
+    errors: {
+      teamNotFoundKey: 'Команда Linear с ключом "%s" не найдена.',
+      teamNotFound: 'Команда Linear "%s" не найдена',
+      userNotMapped: 'Пользователь WEEEK "%s" (%s) не сопоставлен с Linear',
+      taskCreateError: 'Не удалось создать задачу "%s" (ID: %s): %s',
+      docCreateError: 'Не удалось создать документ "%s" (ID: %s): %s',
+    },
+  },
+
+  validator: {
+    weeekAuthError: 'Ошибка подключения к WEEEK API: %s',
+    linearAuthError: 'Ошибка подключения к Linear API: %s',
+    teamNotFound: 'Целевая команда Linear с ID/ключом "%s" не найдена',
+    teamFetchError: 'Ошибка получения команды Linear: %s',
+    userNotFound: 'Пользователь WEEEK "%s" (%s) не найден в Linear',
+    invalidDate: 'Задача "%s" (ID: %s) содержит нестандартную дату: %s',
+    invalidDateEnd: 'Задача "%s" (ID: %s) содержит нестандартный дедлайн: %s',
+    dataFetchError: 'Ошибка загрузки данных для валидации: %s',
+  },
+
+  mapper: {
+    userNotFoundByEmail: 'Пользователь с email "%s" не найден в Linear организации',
+    userNotMapped: 'Не удалось сопоставить пользователя WEEEK: %s',
+  },
+
+  server: {
+    bodyTooLarge: 'Размер тела запроса превышает 1MB',
+    invalidJson: 'Невалидный JSON: %s',
+    tokensRequired: 'Необходимо указать токены WEEEK и Linear',
+    weeekTokenRequired: 'WEEEK API токен не указан',
+    linearTokenRequired: 'Linear API токен не указан',
+    teamIdRequired: 'Токен Linear и teamId обязательны',
+    defaultUserName: 'Пользователь',
+    internalError: 'Внутренняя ошибка сервера',
+  },
+
+  reporter: {
+    title: 'Отчет о миграции WEEEK → Linear',
+    date: 'Дата',
+    duration: 'Длительность',
+    seconds: 'сек.',
+    summaryTitle: 'Итоговая статистика',
+    entityHeader: 'Сущность',
+    totalHeader: 'Всего',
+    createdHeader: 'Создано',
+    updatedHeader: 'Обновлено',
+    skippedHeader: 'Пропущено',
+    errorsHeader: 'Ошибки',
+    projects: 'Проекты',
+    tasks: 'Задачи',
+    labels: 'Метки',
+    documents: 'Документы',
+    parentsResolved: 'Разрешение связей подзадач: %d успешно, %d с предупреждениями.',
+    warningsTitle: 'Предупреждения',
+    errorsTitle: 'Ошибки',
+    mappingTitle: 'Карта соответствия (Mapping)',
+    projectsTitle: 'Проекты',
+    noProjects: '_Проекты не переносились_',
+    docsTitle: 'Документы базы знаний',
+    tasksTitle: 'Задачи (выборка первых 100)',
+    moreTasksNote: '_... и еще %d задач (полный список доступен в migration-report.json)_',
+  },
 };
+

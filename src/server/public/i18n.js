@@ -8,6 +8,7 @@
     ru: {
       // Шапка
       'header.about': 'О сервисе',
+      'header.aboutTitle': 'О сервисе',
       'lang.switch': 'EN',
 
       // Навигация
@@ -109,16 +110,66 @@
       'step5.btnRestart': 'Новая миграция',
 
       // Footer
-      'footer.text': 'WEEEK → Linear Migration Tool • Open Source under MIT License',
+      'footer.text': 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
       'footer.github': 'GitHub Репозиторий',
 
       // Alerts
       'alert.close': 'Закрыть уведомление',
+
+      // Dynamic UI strings (app.js)
+      'status.checking': 'Проверка...',
+      'status.connected': '✓ Подключено',
+      'status.error': '✗ Ошибка',
+      'auth.success': 'Подключение к WEEEK и Linear успешно установлено!',
+      'auth.tokenRequired': 'Укажите оба API токена для проверки',
+      'auth.serverError': 'Не удалось связаться с локальным сервером',
+      'auth.failed': 'Ошибка проверки авторизации',
+      'step2.projectsError': 'Ошибка загрузки проектов',
+      'step2.teamsError': 'Ошибка загрузки команд Linear',
+      'step2.notFound': 'Проекты не найдены',
+      'step2.noDesc': 'Без описания',
+      'step2.selected': '✓ Выбран',
+      'step2.clickToSelect': 'Нажмите для выбора',
+      'step3.noColumns': 'Колонки канбан-доски в WEEEK не найдены или доска пуста. Задачи будут распределены по стандартным статусам Linear.',
+      'step3.createStatePrefix': '➕ Создать в Linear: ',
+      'step3.noUsers': 'Пользователи WEEEK не найдены',
+      'step3.unassigned': 'Без исполнителя (Unassigned)',
+      'step3.skipUserTasks': 'Пропускать задачи этого автора',
+      'step3.selectWatcherPlaceholder': 'Выберите сотрудника Linear...',
+      'step3.noEmail': 'Без email',
+      'step3.defaultUserName': 'Пользователь',
+      'step3.btnDryRun': 'Запустить Dry Run (Симуляция)',
+      'step3.btnReal': 'Начать реальную миграцию',
+      'step4.stagePrefix': 'Стадия ',
+      'step4.init': 'Инициализация миграции...',
+      'step4.startLog': 'Запуск миграционного конвейера...',
+      'step4.startError': 'Ошибка старта: ',
+      'step4.processingItem': 'Обработка...',
+      'step4.finishedTitle': 'Миграция успешно завершена!',
+      'step4.finishedLog': '✓ Миграция завершена. Итоговые отчеты сформированы.',
+      'step4.abortedTitle': 'Процесс остановлен пользователем',
+      'step4.abortedLog': 'Миграция прервана.',
+      'step4.confirmStop': 'Вы уверены, что хотите остановить миграцию?',
+      'step5.startDate': 'Дата запуска:',
+      'step5.duration': 'Длительность:',
+      'step5.sec': 'сек.',
+      'step5.createdProjects': 'Создано проектов',
+      'step5.createdTasks': 'Создано задач',
+      'step5.updatedTasks': 'Обновлено задач',
+      'step5.createdLabels': 'Создано меток',
+      'step5.createdDocs': 'Создано документов',
+      'step5.skippedTasks': 'Пропущено задач',
+      'step5.errorsCount': 'Ошибок',
+      'step5.noEntries': 'Записи не найдены',
+      'step5.thWeeekId': 'WEEEK ID',
+      'step5.thLinearKey': 'Linear Key / ID',
+      'step5.thTaskTitle': 'Название задачи',
     },
 
     en: {
       // Header
       'header.about': 'About',
+      'header.aboutTitle': 'About',
       'lang.switch': 'RU',
 
       // Navigation
@@ -220,11 +271,60 @@
       'step5.btnRestart': 'New migration',
 
       // Footer
-      'footer.text': 'WEEEK → Linear Migration Tool • Open Source under MIT License',
+      'footer.text': 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
       'footer.github': 'GitHub Repository',
 
       // Alerts
       'alert.close': 'Close notification',
+
+      // Dynamic UI strings (app.js)
+      'status.checking': 'Checking...',
+      'status.connected': '✓ Connected',
+      'status.error': '✗ Error',
+      'auth.success': 'Connection to WEEEK and Linear established successfully!',
+      'auth.tokenRequired': 'Enter both API tokens to test',
+      'auth.serverError': 'Failed to reach local server',
+      'auth.failed': 'Authorization check failed',
+      'step2.projectsError': 'Error loading projects',
+      'step2.teamsError': 'Error loading Linear teams',
+      'step2.notFound': 'Projects not found',
+      'step2.noDesc': 'No description',
+      'step2.selected': '✓ Selected',
+      'step2.clickToSelect': 'Click to select',
+      'step3.noColumns': 'No kanban columns found in WEEEK or board is empty. Issues will be mapped to standard Linear states.',
+      'step3.createStatePrefix': '➕ Create in Linear: ',
+      'step3.noUsers': 'WEEEK users not found',
+      'step3.unassigned': 'Unassigned',
+      'step3.skipUserTasks': 'Skip issues by this author',
+      'step3.selectWatcherPlaceholder': 'Select a Linear team member...',
+      'step3.noEmail': 'No email',
+      'step3.defaultUserName': 'User',
+      'step3.btnDryRun': 'Start Dry Run (Simulation)',
+      'step3.btnReal': 'Start Real Migration',
+      'step4.stagePrefix': 'Stage ',
+      'step4.init': 'Initializing migration...',
+      'step4.startLog': 'Starting migration pipeline...',
+      'step4.startError': 'Start error: ',
+      'step4.processingItem': 'Processing...',
+      'step4.finishedTitle': 'Migration completed successfully!',
+      'step4.finishedLog': '✓ Migration finished. Summary reports generated.',
+      'step4.abortedTitle': 'Process stopped by user',
+      'step4.abortedLog': 'Migration aborted.',
+      'step4.confirmStop': 'Are you sure you want to stop the migration?',
+      'step5.startDate': 'Start Date:',
+      'step5.duration': 'Duration:',
+      'step5.sec': 'sec.',
+      'step5.createdProjects': 'Projects Created',
+      'step5.createdTasks': 'Issues Created',
+      'step5.updatedTasks': 'Issues Updated',
+      'step5.createdLabels': 'Labels Created',
+      'step5.createdDocs': 'Documents Created',
+      'step5.skippedTasks': 'Issues Skipped',
+      'step5.errorsCount': 'Errors',
+      'step5.noEntries': 'No entries found',
+      'step5.thWeeekId': 'WEEEK ID',
+      'step5.thLinearKey': 'Linear Key / ID',
+      'step5.thTaskTitle': 'Issue Title',
     },
   };
 
@@ -264,6 +364,12 @@
       if (key) el.setAttribute('aria-label', t(key));
     });
 
+    // title
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      if (key) el.setAttribute('title', t(key));
+    });
+
     // Переключатель языка: показать противоположный язык
     const langToggle = document.getElementById('btn-lang-toggle');
     if (langToggle) {
@@ -274,6 +380,9 @@
     try {
       localStorage.setItem('weeek_lang', lang);
     } catch (_) { /* Safari private mode */ }
+
+    // Уведомить подписчиков (app.js) о смене языка
+    window.dispatchEvent(new CustomEvent('localeChanged', { detail: { locale: lang } }));
   }
 
   /**

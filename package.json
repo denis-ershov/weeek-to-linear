@@ -1,6 +1,6 @@
 {
   "name": "weeek-to-linear",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Open-source CLI tool and engine for safe, idempotent migration from WEEEK to Linear",
   "keywords": [
     "weeek",
@@ -11,7 +11,7 @@
     "open-source"
   ],
   "author": "Denis Ershov",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,7 +1,8 @@
 # WEEEK → Linear Migration Tool
 
 [![CI](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
@@ -137,6 +138,7 @@ pnpm cli migrate
 | Флаг | Описание |
 | :--- | :--- |
 | `-d, --dry-run` | Режим симуляции: валидация и расчет без изменения данных в Linear |
+| `-l, --lang <ru|en>` | Язык интерфейса CLI (по умолчанию `ru` или значение из `WEEEK_LANG`) |
 | `-r, --resume` | Продолжить миграцию с момента последней остановки |
 | `-f, --force` | Принудительный перезапуск с очисткой сохраненного состояния |
 | `-p, --weeek-project <id>` | Неинтерактивный перенос конкретного проекта WEEEK |
@@ -211,5 +213,5 @@ pnpm build
 
 ## 📄 Лицензия
 
-Проект распространяется под открытой лицензией [MIT](LICENSE).
+Проект распространяется под открытой лицензией [GPL v3](LICENSE).
 

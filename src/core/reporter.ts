@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { MigrationSummary, MigrationState } from './types.js';
+import { t, tf, getLocale } from '../i18n/index.js';
 
 export class ReportGenerator {
   /**
-   * Генерация JSON-отчета
+   * Сохранение отчета в формате JSON
    */
   public static generateJsonReport(
     summary: MigrationSummary,
@@ -13,6 +14,7 @@ export class ReportGenerator {
   ): string {
     const reportData = {
       summary,
+      state,
       mapping: {
         projects: state.projects,
         tasks: state.tasks,
@@ -21,6 +23,7 @@ export class ReportGenerator {
         boardColumns: state.boardColumns || {},
         documents: state.documents || {},
       },
+      exportedAt: new Date().toISOString(),
     };
 
     const dir = path.dirname(outputPath);
@@ -33,7 +36,7 @@ export class ReportGenerator {
   }
 
   /**
-   * Генерация Markdown-отчета с красивым Linear-стилем
+   * Генерация понятного человеку отчета в формате Markdown
    */
   public static generateMarkdownReport(
     summary: MigrationSummary,
@@ -43,23 +46,24 @@ export class ReportGenerator {
     const taskEntries = Object.entries(state.tasks);
     const projectEntries = Object.entries(state.projects);
     const docEntries = Object.entries(state.documents || {});
+    const localeStr = getLocale() === 'ru' ? 'ru-RU' : 'en-US';
 
-    let md = `# Отчет о миграции WEEEK → Linear\n\n`;
-    md += `**Дата:** ${new Date(summary.startedAt).toLocaleString('ru-RU')}  \n`;
-    md += `**Длительность:** ${summary.durationSeconds.toFixed(1)} сек.  \n\n`;
+    let md = `# ${t('reporter.title')}\n\n`;
+    md += `**${t('reporter.date')}:** ${new Date(summary.startedAt).toLocaleString(localeStr)}  \n`;
+    md += `**${t('reporter.duration')}:** ${summary.durationSeconds.toFixed(1)} ${t('reporter.seconds')}  \n\n`;
 
-    md += `## 📊 Итоговая статистика\n\n`;
-    md += `| Сущность | Всего | Создано | Обновлено | Пропущено | Ошибки |\n`;
+    md += `## 📊 ${t('reporter.summaryTitle')}\n\n`;
+    md += `| ${t('reporter.entityHeader')} | ${t('reporter.totalHeader')} | ${t('reporter.createdHeader')} | ${t('reporter.updatedHeader')} | ${t('reporter.skippedHeader')} | ${t('reporter.errorsHeader')} |\n`;
     md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
-    md += `| **Проекты** | ${summary.projects.total} | ${summary.projects.created} | 0 | ${summary.projects.skipped} | ${summary.projects.failed} |\n`;
-    md += `| **Задачи** | ${summary.tasks.total} | ${summary.tasks.created} | ${summary.tasks.updated} | ${summary.tasks.skipped} | ${summary.tasks.failed} |\n`;
-    md += `| **Метки** | ${summary.labels.total} | ${summary.labels.created} | 0 | ${summary.labels.reused} | 0 |\n`;
-    md += `| **Документы** | ${summary.documents.total} | ${summary.documents.created} | 0 | ${summary.documents.skipped} | ${summary.documents.failed} |\n\n`;
+    md += `| **${t('reporter.projects')}** | ${summary.projects.total} | ${summary.projects.created} | 0 | ${summary.projects.skipped} | ${summary.projects.failed} |\n`;
+    md += `| **${t('reporter.tasks')}** | ${summary.tasks.total} | ${summary.tasks.created} | ${summary.tasks.updated} | ${summary.tasks.skipped} | ${summary.tasks.failed} |\n`;
+    md += `| **${t('reporter.labels')}** | ${summary.labels.total} | ${summary.labels.created} | 0 | ${summary.labels.reused} | 0 |\n`;
+    md += `| **${t('reporter.documents')}** | ${summary.documents.total} | ${summary.documents.created} | 0 | ${summary.documents.skipped} | ${summary.documents.failed} |\n\n`;
 
-    md += `**Разрешение связей подзадач:** ${summary.tasks.parentsResolved} успешно, ${summary.tasks.parentsFailed} с предупреждениями.\n\n`;
+    md += `**${tf('reporter.parentsResolved', summary.tasks.parentsResolved, summary.tasks.parentsFailed)}**\n\n`;
 
     if (summary.warnings.length > 0) {
-      md += `## ⚠️ Предупреждения (${summary.warnings.length})\n\n`;
+      md += `## ⚠️ ${t('reporter.warningsTitle')} (${summary.warnings.length})\n\n`;
       for (const w of summary.warnings) {
         md += `- ${w}\n`;
       }
@@ -67,29 +71,29 @@ export class ReportGenerator {
     }
 
     if (summary.errors.length > 0) {
-      md += `## ❌ Ошибки (${summary.errors.length})\n\n`;
+      md += `## ❌ ${t('reporter.errorsTitle')} (${summary.errors.length})\n\n`;
       for (const e of summary.errors) {
         md += `- **[${e.entityType.toUpperCase()}]** (${e.entityId}): ${e.message}\n`;
       }
       md += `\n`;
     }
 
-    md += `## 🔗 Карта соответствия (Mapping)\n\n`;
-    md += `### Проекты\n\n`;
+    md += `## 🔗 ${t('reporter.mappingTitle')}\n\n`;
+    md += `### ${t('reporter.projectsTitle')}\n\n`;
     if (projectEntries.length > 0) {
-      md += `| WEEEK ID | Linear ID | Название |\n`;
+      md += `| WEEEK ID | Linear ID | ${t('cli.weeek.colName')} |\n`;
       md += `| :--- | :--- | :--- |\n`;
       for (const [wId, p] of projectEntries) {
         md += `| \`${wId}\` | \`${p.linearProjectId}\` | ${p.name} |\n`;
       }
       md += `\n`;
     } else {
-      md += `_Проекты не переносились_\n\n`;
+      md += `${t('reporter.noProjects')}\n\n`;
     }
 
     if (docEntries.length > 0) {
-      md += `### Документы базы знаний\n\n`;
-      md += `| WEEEK Doc ID | Linear Doc ID | Заголовок |\n`;
+      md += `### ${t('reporter.docsTitle')}\n\n`;
+      md += `| WEEEK Doc ID | Linear Doc ID | ${t('cli.weeek.colName')} |\n`;
       md += `| :--- | :--- | :--- |\n`;
       for (const [wId, d] of docEntries) {
         md += `| \`${wId}\` | \`${d.linearDocId}\` | ${d.title} |\n`;
@@ -97,15 +101,15 @@ export class ReportGenerator {
       md += `\n`;
     }
 
-    md += `### Задачи (выборка первых 100)\n\n`;
+    md += `### ${t('reporter.tasksTitle')}\n\n`;
     if (taskEntries.length > 0) {
-      md += `| WEEEK ID | Linear Key / ID | Название |\n`;
+      md += `| WEEEK ID | Linear Key / ID | ${t('cli.weeek.colName')} |\n`;
       md += `| :--- | :--- | :--- |\n`;
-      for (const [wId, t] of taskEntries.slice(0, 100)) {
-        md += `| \`${wId}\` | \`${t.linearIssueKey || t.linearIssueId}\` | ${t.title} |\n`;
+      for (const [wId, tItem] of taskEntries.slice(0, 100)) {
+        md += `| \`${wId}\` | \`${tItem.linearIssueKey || tItem.linearIssueId}\` | ${tItem.title} |\n`;
       }
       if (taskEntries.length > 100) {
-        md += `\n_... и еще ${taskEntries.length - 100} задач (полный список доступен в migration-report.json)_\n\n`;
+        md += `\n${tf('reporter.moreTasksNote', taskEntries.length - 100)}\n\n`;
       }
       md += `\n`;
     }

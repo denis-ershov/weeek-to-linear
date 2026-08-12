@@ -1,7 +1,8 @@
 # WEEEK → Linear Migration Tool
 
 [![CI](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
@@ -152,7 +153,7 @@ pnpm cli migrate
 | `--unmatched-user <strategy>` | Action for unmatched users: `unassigned` (default), `skip`, `abort` |
 | `--column-mapping <json>` | JSON column mapping string (e.g. `'{"col_1":"st_1"}'`) |
 | `--user-mapping <json>` | JSON user mapping string (e.g. `'{"usr_w":"usr_lin"}'`) |
-| `--lang <ru\|en>` | Interface language (default: auto-detected) |
+| `-l, --lang <ru|en>` | CLI interface language (`ru` or `en`, default `ru` or from `WEEEK_LANG`) |
 
 ---
 
@@ -221,4 +222,4 @@ Detailed architecture documentation is available in the `docs/` directory:
 
 ## 📄 License
 
-This project is distributed under the open [MIT](LICENSE) license.
+This project is distributed under the open [GPL v3](LICENSE) license.

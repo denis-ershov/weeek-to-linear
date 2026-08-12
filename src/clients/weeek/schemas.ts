@@ -4,27 +4,27 @@ import { normalizeDocumentContentToMarkdown } from '../../utils/markdown.js';
 export const WeeekUserSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
   email: z.string().nullish().transform(v => v?.trim() || ''),
-  name: z.string().nullish().transform(v => v?.trim() || 'Пользователь').default('Пользователь'),
+  name: z.string().nullish().transform(v => v?.trim() || '').default(''),
   avatarUrl: z.string().nullish().transform(v => (v ? String(v) : null)),
 });
 
 export const WeeekProjectSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || 'Без названия').default('Без названия'),
+  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
   description: z.string().nullish().transform(v => (v ? String(v) : null)),
   isPrivate: z.union([z.boolean(), z.number()]).nullish().transform(v => Boolean(v)).default(false),
 });
 
 export const WeeekBoardSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || 'Доска').default('Доска'),
+  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
   projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
   order: z.number().nullish().transform(v => (v !== null && v !== undefined ? v : 0)).default(0),
 });
 
 export const WeeekBoardColumnSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || 'Колонка').default('Колонка'),
+  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
   boardId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
   projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
   order: z.number().nullish().transform(v => (v !== null && v !== undefined ? v : 0)).default(0),
@@ -36,7 +36,7 @@ export const WeeekDocumentSchema = z.preprocess(
     if (!val || typeof val !== 'object') return val;
     const obj = val as Record<string, unknown>;
     const id = obj.id ?? obj.uuid ?? obj.articleId ?? obj.documentId ?? obj.doc_id ?? obj._id;
-    const title = obj.title ?? obj.name ?? obj.header ?? obj.subject ?? 'Документ без названия';
+    const title = obj.title ?? obj.name ?? obj.header ?? obj.subject ?? '';
     const content = obj.content ?? obj.body ?? obj.text ?? obj.description ?? obj.data ?? obj.html ?? obj.blocks ?? '';
     const projectId = obj.projectId ?? obj.project_id ?? obj.project;
     const parentId = obj.parentId ?? obj.parent_id ?? obj.folderId ?? obj.folder_id;
@@ -55,8 +55,8 @@ export const WeeekDocumentSchema = z.preprocess(
     title: z
       .union([z.string(), z.number()])
       .nullish()
-      .transform(val => (val !== null && val !== undefined ? String(val).trim() : 'Документ без названия'))
-      .default('Документ без названия'),
+      .transform(val => (val !== null && val !== undefined ? String(val).trim() : ''))
+      .default(''),
     content: z
       .any()
       .nullish()

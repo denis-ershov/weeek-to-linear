@@ -12,9 +12,10 @@
 - **Мультиязычность (i18n) — Русский и Английский**:
   - Создана i18n-инфраструктура: `src/i18n/types.ts` (контракт), `src/i18n/ru.ts` и `src/i18n/en.ts` (словари), `src/i18n/index.ts` (ядро: `detectLocale`, `setLocale`, `t`).
   - **CLI**: все пользовательские строки заменены на `t()`. Добавлен флаг `--lang ru|en` и переменная окружения `WEEEK_LANG`. Язык определяется до `program.parse()` — локализован даже вывод `--help`.
-  - **Web UI**: создан `src/server/public/i18n.js` со словарями `ru`/`en`, функциями `applyLocale()` и `initLocale()`. Все текстовые элементы HTML размечены атрибутами `data-i18n`. Кнопка переключения `RU | EN` добавлена в шапку. Выбор сохраняется в `localStorage`, при первом открытии определяется `navigator.language`.
-  - **Логи (pino logger)**: создана функция `tf()` для форматированных сообщений с подстановкой параметров. Локализованы все `logger.*` вызовы в `retry.ts`, `server.ts`, `state.ts`, `engine.ts`, `weeek/client.ts`, `linear/client.ts`, `ui.ts`.
-  - Затронутые файлы: `src/cli/index.ts`, `src/cli/commands/auth.ts`, `migrate.ts`, `weeek.ts`, `linear.ts`, `ui.ts`, `src/server/public/index.html`, `app.js`, `src/utils/retry.ts`, `src/server/server.ts`, `src/core/state.ts`, `src/core/engine.ts`, `src/clients/weeek/client.ts`, `src/clients/linear/client.ts`.
+  - **Web UI**: создан `src/server/public/i18n.js` со словарями `ru`/`en`, функциями `applyLocale()` и `initLocale()`. Все текстовые элементы HTML размечены атрибутами `data-i18n`, а динамически формируемые JS-сообщения (уведомления авторизации, статусы проверок, подписи карточек и кнопок в `app.js`) переведены на `window.i18n.t()`. Кнопка переключения `RU | EN` добавлена в шапку.
+  - **Логи, отчёты и ошибки API**: создана функция `tf()` для форматированных сообщений с подстановкой параметров. Локализованы все `logger.*` вызовы, названия стадий миграции `onStage`, генерация Markdown-отчётов `ReportGenerator`, сообщения проверок `PreflightValidator`, преобразовний `mapper.ts` и ошибки REST API сервера `routes.ts`.
+  - Добавлены юнит-тесты для i18n модуля (`tests/unit/i18n.test.ts`).
+  - Затронутые файлы: `src/cli/index.ts`, `src/cli/commands/auth.ts`, `migrate.ts`, `weeek.ts`, `linear.ts`, `ui.ts`, `src/server/public/index.html`, `app.js`, `src/utils/retry.ts`, `src/server/server.ts`, `src/server/routes.ts`, `src/core/state.ts`, `src/core/engine.ts`, `src/core/validator.ts`, `src/core/mapper.ts`, `src/core/reporter.ts`, `src/clients/weeek/client.ts`, `src/clients/linear/client.ts`.
 - **English README** (`README.en.md`): полный перевод документации на английский язык со всеми актуальными возможностями, включая i18n раздел.
 - Добавлена ссылка `🇬🇧 English version` в начало русского `README.md`.
 

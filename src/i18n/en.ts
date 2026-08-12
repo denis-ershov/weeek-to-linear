@@ -235,7 +235,7 @@ export const en: I18nDictionary = {
     },
 
     footer: {
-      text: 'WEEEK → Linear Migration Tool • Open Source under MIT License',
+      text: 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
       github: 'GitHub Repository',
     },
 
@@ -300,4 +300,82 @@ export const en: I18nDictionary = {
       browserOpenError: 'Failed to open browser automatically: %s',
     },
   },
+
+  engine: {
+    stages: {
+      auth: 'Authenticating with WEEEK and Linear API',
+      loadingData: 'Loading WEEEK and Linear metadata',
+      preflight: 'Preflight validation',
+      mappingUsers: 'Mapping users (Assignees)',
+      mappingStates: 'Mapping statuses and kanban columns',
+      mappingLabels: 'Migrating tags and labels',
+      creatingStates: 'Creating missing workflow states in Linear',
+      resolvingHierarchy: 'Topological sorting of tasks and subtasks',
+      migratingTasks: 'Migrating issues to Linear',
+      migratingDocs: 'Migrating Knowledge Base documents',
+      generatingReport: 'Generating reports',
+    },
+    errors: {
+      teamNotFoundKey: 'Linear team with key "%s" not found.',
+      teamNotFound: 'Linear team "%s" not found',
+      userNotMapped: 'WEEEK user "%s" (%s) is not mapped to Linear',
+      taskCreateError: 'Failed to create issue "%s" (ID: %s): %s',
+      docCreateError: 'Failed to create document "%s" (ID: %s): %s',
+    },
+  },
+
+  validator: {
+    weeekAuthError: 'WEEEK API connection error: %s',
+    linearAuthError: 'Linear API connection error: %s',
+    teamNotFound: 'Target Linear team with ID/key "%s" not found',
+    teamFetchError: 'Error fetching Linear team: %s',
+    userNotFound: 'WEEEK user "%s" (%s) not found in Linear',
+    invalidDate: 'Issue "%s" (ID: %s) has invalid date: %s',
+    invalidDateEnd: 'Issue "%s" (ID: %s) has invalid deadline: %s',
+    dataFetchError: 'Error fetching data for validation: %s',
+  },
+
+  mapper: {
+    userNotFoundByEmail: 'User with email "%s" not found in Linear organization',
+    userNotMapped: 'Could not map WEEEK user: %s',
+  },
+
+  server: {
+    bodyTooLarge: 'Request body size exceeds 1MB',
+    invalidJson: 'Invalid JSON: %s',
+    tokensRequired: 'WEEEK and Linear tokens are required',
+    weeekTokenRequired: 'WEEEK API token is not specified',
+    linearTokenRequired: 'Linear API token is not specified',
+    teamIdRequired: 'Linear token and teamId are required',
+    defaultUserName: 'User',
+    internalError: 'Internal server error',
+  },
+
+  reporter: {
+    title: 'WEEEK → Linear Migration Report',
+    date: 'Date',
+    duration: 'Duration',
+    seconds: 'sec.',
+    summaryTitle: 'Summary Statistics',
+    entityHeader: 'Entity',
+    totalHeader: 'Total',
+    createdHeader: 'Created',
+    updatedHeader: 'Updated',
+    skippedHeader: 'Skipped',
+    errorsHeader: 'Errors',
+    projects: 'Projects',
+    tasks: 'Issues',
+    labels: 'Labels',
+    documents: 'Documents',
+    parentsResolved: 'Subtask parent resolution: %d successful, %d with warnings.',
+    warningsTitle: 'Warnings',
+    errorsTitle: 'Errors',
+    mappingTitle: 'Entity Mapping',
+    projectsTitle: 'Projects',
+    noProjects: '_No projects were migrated_',
+    docsTitle: 'Knowledge Base Documents',
+    tasksTitle: 'Issues (sample of first 100)',
+    moreTasksNote: '_... and %d more issues (full list in migration-report.json)_',
+  },
 };
+

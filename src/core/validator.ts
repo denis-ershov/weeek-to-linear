@@ -2,6 +2,7 @@ import type { WeeekClient } from '../clients/weeek/client.js';
 import type { LinearClient } from '../clients/linear/client.js';
 import type { PreflightValidationResult } from './types.js';
 import { isValidDateString } from '../utils/dates.js';
+import { tf } from '../i18n/index.js';
 
 export interface PreflightValidationParams {
   weeekClient: WeeekClient;
@@ -23,24 +24,24 @@ export class PreflightValidator {
     try {
       await params.weeekClient.getMe();
     } catch (err) {
-      errors.push(`Ошибка подключения к WEEEK API: ${(err as Error).message}`);
+      errors.push(tf('validator.weeekAuthError', (err as Error).message));
     }
 
     // 2. Проверка Linear авторизации
     try {
       await params.linearClient.getViewer();
     } catch (err) {
-      errors.push(`Ошибка подключения к Linear API: ${(err as Error).message}`);
+      errors.push(tf('validator.linearAuthError', (err as Error).message));
     }
 
     // 3. Проверка выбранной команды Linear
     try {
       const team = await params.linearClient.getTeam(params.linearTeamId);
       if (!team) {
-        errors.push(`Целевая команда Linear с ID/ключом "${params.linearTeamId}" не найдена`);
+        errors.push(tf('validator.teamNotFound', params.linearTeamId));
       }
     } catch (err) {
-      errors.push(`Ошибка получения команды Linear: ${(err as Error).message}`);
+      errors.push(tf('validator.teamFetchError', (err as Error).message));
     }
 
     // Если есть фатальные ошибки авторизации, завершаем проверку
@@ -77,7 +78,7 @@ export class PreflightValidator {
       const linearUserEmails = new Set(linearUsers.map(u => u.email.toLowerCase()));
       for (const wUser of weeekUsers) {
         if (wUser.email && !linearUserEmails.has(wUser.email.toLowerCase())) {
-          warnings.push(`Пользователь WEEEK "${wUser.name}" (${wUser.email}) не найден в Linear`);
+          warnings.push(tf('validator.userNotFound', wUser.name || '', wUser.email));
         }
       }
 
@@ -92,15 +93,15 @@ export class PreflightValidator {
 
         for (const task of tasks) {
           if (task.date && !isValidDateString(task.date)) {
-            warnings.push(`Задача "${task.title}" (ID: ${task.id}) содержит нестандартную дату: ${task.date}`);
+            warnings.push(tf('validator.invalidDate', task.title, task.id, task.date));
           }
           if (task.dateEnd && !isValidDateString(task.dateEnd)) {
-            warnings.push(`Задача "${task.title}" (ID: ${task.id}) содержит нестандартный дедлайн: ${task.dateEnd}`);
+            warnings.push(tf('validator.invalidDateEnd', task.title, task.id, task.dateEnd));
           }
         }
       }
     } catch (err) {
-      errors.push(`Ошибка загрузки данных для валидации: ${(err as Error).message}`);
+      errors.push(tf('validator.dataFetchError', (err as Error).message));
     }
 
     return {
