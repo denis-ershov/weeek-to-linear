@@ -36,4 +36,9 @@ describe('i18n module', () => {
     const dictEn = getDict('en');
     expect(dictEn.common.yes).toBe('Yes');
   });
+
+  it('должен определять системную локаль через detectLocale()', () => {
+    const locale = detectLocale();
+    expect(['ru', 'en']).toContain(locale);
+  });
 });
