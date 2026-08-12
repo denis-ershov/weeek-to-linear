@@ -110,8 +110,14 @@
       'step5.btnRestart': 'Новая миграция',
 
       // Footer
-      'footer.text': 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
+      'footer.text': 'WEEEK → Linear Migration Tool • Открытый исходный код по лицензии GPL v3',
       'footer.github': 'GitHub Репозиторий',
+
+      // About Modal
+      'about.modalTitle': 'О сервисе WEEEK → Linear',
+      'about.modalDesc': 'Профессиональный инструмент переноса проектов, задач, многоуровневых подзадач, документов и структуры из WEEEK в Linear.',
+      'about.version': 'Версия:',
+      'about.license': 'Лицензия:',
 
       // Alerts
       'alert.close': 'Закрыть уведомление',
@@ -274,6 +280,12 @@
       'footer.text': 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
       'footer.github': 'GitHub Repository',
 
+      // About Modal
+      'about.modalTitle': 'About WEEEK → Linear',
+      'about.modalDesc': 'Professional tool for migrating projects, tasks, multi-level subtasks, documents, and structure from WEEEK to Linear.',
+      'about.version': 'Version:',
+      'about.license': 'License:',
+
       // Alerts
       'alert.close': 'Close notification',
 
@@ -370,10 +382,17 @@
       if (key) el.setAttribute('title', t(key));
     });
 
-    // Переключатель языка: показать противоположный язык
+    // Переключатель языка: подсветить активную кнопку в пилюле
+    const btnRu = document.getElementById('lang-btn-ru');
+    const btnEn = document.getElementById('lang-btn-en');
+    if (btnRu && btnEn) {
+      btnRu.classList.toggle('active', lang === 'ru');
+      btnEn.classList.toggle('active', lang === 'en');
+    }
+
     const langToggle = document.getElementById('btn-lang-toggle');
     if (langToggle) {
-      langToggle.textContent = t('lang.switch');
+      langToggle.textContent = lang.toUpperCase();
     }
 
     // Сохранить выбор
@@ -402,7 +421,13 @@
 
     applyLocale(lang);
 
-    // Обработчик кнопки переключения
+    // Обработчик сегментированного переключателя
+    const btnRu = document.getElementById('lang-btn-ru');
+    const btnEn = document.getElementById('lang-btn-en');
+    if (btnRu) btnRu.addEventListener('click', () => applyLocale('ru'));
+    if (btnEn) btnEn.addEventListener('click', () => applyLocale('en'));
+
+    // Фолбэк кнопка
     const langToggle = document.getElementById('btn-lang-toggle');
     if (langToggle) {
       langToggle.addEventListener('click', () => {

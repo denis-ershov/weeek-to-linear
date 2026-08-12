@@ -119,6 +119,29 @@
 
   btnAlertClose.addEventListener('click', hideAlert);
 
+  // About Modal
+  const btnThemeInfo = document.getElementById('btn-theme-info');
+  const aboutModal = document.getElementById('about-modal');
+  const btnCloseAboutModal = document.getElementById('btn-close-about-modal');
+  const btnCloseAboutOk = document.getElementById('btn-close-about-ok');
+
+  function openAboutModal() {
+    if (aboutModal) aboutModal.classList.remove('hidden');
+  }
+
+  function closeAboutModal() {
+    if (aboutModal) aboutModal.classList.add('hidden');
+  }
+
+  if (btnThemeInfo) btnThemeInfo.addEventListener('click', openAboutModal);
+  if (btnCloseAboutModal) btnCloseAboutModal.addEventListener('click', closeAboutModal);
+  if (btnCloseAboutOk) btnCloseAboutOk.addEventListener('click', closeAboutModal);
+  if (aboutModal) {
+    aboutModal.addEventListener('click', (e) => {
+      if (e.target === aboutModal) closeAboutModal();
+    });
+  }
+
   // Stepper Navigation
   function goToStep(step) {
     if (step < 1 || step > 5) return;

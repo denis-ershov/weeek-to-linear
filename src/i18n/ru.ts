@@ -235,7 +235,7 @@ export const ru: I18nDictionary = {
     },
 
     footer: {
-      text: 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
+      text: 'WEEEK → Linear Migration Tool • Открытый исходный код по лицензии GPL v3',
       github: 'GitHub Репозиторий',
     },
 
