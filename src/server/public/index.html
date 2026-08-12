@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WEEEK → Linear Migration Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <span class="brand-w">W</span>
+          <span class="brand-arrow">→</span>
+          <span class="brand-l">L</span>
+        </div>
+        <div class="brand-info">
+          <h1>WEEEK → Linear</h1>
+          <span class="badge badge-version">v0.1.0</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-theme-info" class="btn btn-ghost" title="О сервисе">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          <span>О сервисе</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Stepper Nav -->
+    <nav class="stepper-nav" aria-label="Этапы миграции">
+      <div class="step-item active" data-step="1" id="nav-step-1">
+        <span class="step-num">1</span>
+        <span class="step-label">Подключение</span>
+      </div>
+      <div class="step-separator"></div>
+      <div class="step-item" data-step="2" id="nav-step-2">
+        <span class="step-num">2</span>
+        <span class="step-label">Проекты</span>
+      </div>
+      <div class="step-separator"></div>
+      <div class="step-item" data-step="3" id="nav-step-3">
+        <span class="step-num">3</span>
+        <span class="step-label">Маппинг</span>
+      </div>
+      <div class="step-separator"></div>
+      <div class="step-item" data-step="4" id="nav-step-4">
+        <span class="step-num">4</span>
+        <span class="step-label">Миграция</span>
+      </div>
+      <div class="step-separator"></div>
+      <div class="step-item" data-step="5" id="nav-step-5">
+        <span class="step-num">5</span>
+        <span class="step-label">Отчет</span>
+      </div>
+    </nav>
+
+    <!-- Notification / Alert Banner -->
+    <div id="alert-banner" class="alert hidden" role="alert">
+      <div class="alert-icon" id="alert-icon"></div>
+      <div class="alert-content" id="alert-text"></div>
+      <button class="alert-close" id="btn-alert-close" aria-label="Закрыть уведомление">✕</button>
+    </div>
+
+    <!-- Main Content Panels -->
+    <main class="main-content">
+      <!-- Step 1: Authentication -->
+      <section class="step-panel active" id="panel-step-1">
+        <div class="panel-header">
+          <h2>Подключение к API</h2>
+          <p class="text-secondary">Укажите API токены WEEEK и Linear для безопасного прямого взаимодействия.</p>
+        </div>
+
+        <div class="cards-grid">
+          <!-- WEEEK Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="service-tag service-weeek">WEEEK</div>
+              <span class="status-indicator" id="status-weeek">Ожидание проверки</span>
+            </div>
+            <div class="form-group">
+              <label for="input-weeek-token">API Токен WEEEK</label>
+              <input type="password" id="input-weeek-token" placeholder="Bearer eyJhbGciOiJIUzI1Ni..." autocomplete="off">
+              <small class="form-help">WEEEK → Настройки профиля → API</small>
+            </div>
+            <div id="weeek-user-info" class="account-card hidden">
+              <div class="account-avatar">W</div>
+              <div class="account-details">
+                <span class="account-name" id="weeek-user-name">—</span>
+                <span class="account-email" id="weeek-user-email">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linear Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="service-tag service-linear">Linear</div>
+              <span class="status-indicator" id="status-linear">Ожидание проверки</span>
+            </div>
+            <div class="form-group">
+              <label for="input-linear-token">Personal API Key Linear</label>
+              <input type="password" id="input-linear-token" placeholder="lin_api_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+              <small class="form-help"><a href="https://linear.app/settings/account/security" target="_blank" rel="noopener">Linear → Settings → Security</a></small>
+            </div>
+            <div id="linear-user-info" class="account-card hidden">
+              <div class="account-avatar">L</div>
+              <div class="account-details">
+                <span class="account-name" id="linear-user-name">—</span>
+                <span class="account-email" id="linear-user-org">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button id="btn-test-auth" class="btn btn-secondary">
+            <span class="btn-spinner hidden"></span>
+            <span>Проверить подключения</span>
+          </button>
+          <button id="btn-step1-next" class="btn btn-primary" disabled>
+            <span>Продолжить к выбору проектов</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 2: Discovery & Selection -->
+      <section class="step-panel" id="panel-step-2">
+        <div class="panel-header">
+          <h2>Выбор проектов и целевой команды</h2>
+          <p class="text-secondary">Выберите, какие проекты из WEEEK перенести, и укажите целевую команду Linear.</p>
+        </div>
+
+        <div class="selection-layout">
+          <!-- Target Linear Team -->
+          <div class="card team-selector-card">
+            <h3>Целевая команда Linear</h3>
+            <div class="form-group">
+              <label for="select-linear-team">Команда назначения</label>
+              <select id="select-linear-team" class="custom-select">
+                <option value="">Загрузка команд...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Projects List -->
+          <div class="projects-container">
+            <div class="projects-header-controls">
+              <h3>Проекты WEEEK</h3>
+              <div class="search-box">
+                <input type="text" id="input-project-search" placeholder="Поиск проектов...">
+              </div>
+              <div class="selection-actions">
+                <button id="btn-select-all-projects" class="btn btn-small btn-ghost">Выбрать все</button>
+                <button id="btn-deselect-all-projects" class="btn btn-small btn-ghost">Снять выбор</button>
+              </div>
+            </div>
+
+            <div id="projects-list-container" class="projects-grid">
+              <!-- Карточки проектов рендерятся динамически -->
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button class="btn btn-secondary btn-prev-step">
+            <span class="btn-arrow">←</span>
+            <span>Назад</span>
+          </button>
+          <button id="btn-step2-next" class="btn btn-primary" disabled>
+            <span>Перейти к настройкам маппинга</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 3: Mapping & Options -->
+      <section class="step-panel" id="panel-step-3">
+        <div class="panel-header">
+          <h2>Настройка сопоставления данных</h2>
+          <p class="text-secondary">Проверьте правила маппинга статусов, пользователей и параметры миграции.</p>
+        </div>
+
+        <div class="cards-grid">
+          <!-- Workflow State Mapping -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Статусы задач (Workflow States)</h3>
+            </div>
+            <div class="mapping-list">
+              <div class="mapping-row">
+                <span class="mapping-from">Not started / Не начато</span>
+                <span class="mapping-arrow">→</span>
+                <span class="badge badge-linear" id="mapped-state-backlog">Backlog / Unstarted</span>
+              </div>
+              <div class="mapping-row">
+                <span class="mapping-from">In progress / В работе</span>
+                <span class="mapping-arrow">→</span>
+                <span class="badge badge-linear" id="mapped-state-started">Started</span>
+              </div>
+              <div class="mapping-row">
+                <span class="mapping-from">Completed / Завершено</span>
+                <span class="mapping-arrow">→</span>
+                <span class="badge badge-success" id="mapped-state-done">Done (Completed)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Migration Options -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Параметры запуска</h3>
+            </div>
+            <div class="options-form">
+              <label class="switch-control">
+                <input type="checkbox" id="opt-dry-run" checked>
+                <span class="switch-slider"></span>
+                <div class="switch-label">
+                  <span class="switch-title">Режим симуляции (Dry Run)</span>
+                  <span class="switch-desc">Выполнить расчет и валидацию без изменений в Linear</span>
+                </div>
+              </label>
+
+              <label class="switch-control">
+                <input type="checkbox" id="opt-completed" checked>
+                <span class="switch-slider"></span>
+                <div class="switch-label">
+                  <span class="switch-title">Переносить завершенные задачи</span>
+                  <span class="switch-desc">Включает задачи со статусом Completed</span>
+                </div>
+              </label>
+
+              <label class="switch-control">
+                <input type="checkbox" id="opt-resume">
+                <span class="switch-slider"></span>
+                <div class="switch-label">
+                  <span class="switch-title">Возобновить прерванную миграцию</span>
+                  <span class="switch-desc">Использовать сохраненное состояние (.weeek-linear)</span>
+                </div>
+              </label>
+
+              <div class="form-group margin-top-sm">
+                <label for="select-unmatched-user">Действие при ненайденном пользователе:</label>
+                <select id="select-unmatched-user" class="custom-select">
+                  <option value="unassigned">Создать задачу без исполнителя (Рекомендуется)</option>
+                  <option value="skip">Пропустить задачу</option>
+                  <option value="abort">Остановить миграцию</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button class="btn btn-secondary btn-prev-step">
+            <span class="btn-arrow">←</span>
+            <span>Назад</span>
+          </button>
+          <button id="btn-start-migration" class="btn btn-success">
+            <span id="btn-start-text">Запустить Dry Run</span>
+            <span class="btn-arrow">🚀</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 4: Migration Live Dashboard -->
+      <section class="step-panel" id="panel-step-4">
+        <div class="panel-header">
+          <h2 id="migration-status-title">Выполнение миграции</h2>
+          <p class="text-secondary" id="migration-status-desc">Следите за прогрессом переноса данных в реальном времени.</p>
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="dashboard-progress-card">
+          <div class="progress-header">
+            <span class="stage-badge" id="live-stage-badge">Стадия 1/11</span>
+            <span class="stage-name" id="live-stage-name">Подготовка к запуску...</span>
+            <span class="progress-percentage" id="live-progress-pct">0%</span>
+          </div>
+
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="live-progress-bar"></div>
+          </div>
+
+          <div class="current-task-info">
+            <span class="text-secondary">Обработка:</span>
+            <span class="current-item-name" id="live-current-item">—</span>
+          </div>
+        </div>
+
+        <!-- Real-time Counters Grid -->
+        <div class="counters-grid">
+          <div class="counter-card">
+            <span class="counter-num counter-primary" id="cnt-projects">0</span>
+            <span class="counter-label">Проекты</span>
+          </div>
+          <div class="counter-card">
+            <span class="counter-num counter-success" id="cnt-tasks">0</span>
+            <span class="counter-label">Задачи</span>
+          </div>
+          <div class="counter-card">
+            <span class="counter-num counter-purple" id="cnt-labels">0</span>
+            <span class="counter-label">Метки</span>
+          </div>
+          <div class="counter-card">
+            <span class="counter-num counter-warning" id="cnt-warnings">0</span>
+            <span class="counter-label">Предупреждения</span>
+          </div>
+          <div class="counter-card">
+            <span class="counter-num counter-error" id="cnt-errors">0</span>
+            <span class="counter-label">Ошибки</span>
+          </div>
+        </div>
+
+        <!-- Live Event Log Stream -->
+        <div class="card console-card">
+          <div class="console-header">
+            <h3>Живой журнал событий</h3>
+            <div class="console-controls">
+              <label class="auto-scroll-label">
+                <input type="checkbox" id="chk-auto-scroll" checked>
+                <span>Автоскролл</span>
+              </label>
+              <button id="btn-clear-logs" class="btn btn-small btn-ghost">Очистить</button>
+            </div>
+          </div>
+          <div class="console-body" id="live-console-logs">
+            <div class="log-line log-info">
+              <span class="log-time">00:00:00</span>
+              <span class="log-text">Инициализация потока событий...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button id="btn-stop-migration" class="btn btn-danger">
+            <span>Остановить миграцию</span>
+          </button>
+          <button id="btn-step4-next" class="btn btn-primary hidden">
+            <span>Перейти к итоговому отчету</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 5: Report View -->
+      <section class="step-panel" id="panel-step-5">
+        <div class="panel-header">
+          <h2 id="report-title">Отчет о миграции</h2>
+          <p class="text-secondary" id="report-subtitle">Сводные результаты и карта соответствия сущностей.</p>
+        </div>
+
+        <!-- Summary Stats Card -->
+        <div class="card report-summary-card">
+          <div class="report-meta" id="report-meta-info">
+            <!-- Дата, длительность и статус -->
+          </div>
+          <div class="counters-grid" id="report-counters">
+            <!-- Счетчики из итогового отчета -->
+          </div>
+        </div>
+
+        <!-- Report Mapping Table / Cards -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Карта соответствия перенесенных задач</h3>
+            <div class="search-box">
+              <input type="text" id="input-mapping-search" placeholder="Поиск по ID или названию...">
+            </div>
+          </div>
+          <div class="mapping-table-wrapper" id="report-mapping-container">
+            <!-- Список соответствий -->
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button id="btn-download-md" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Скачать Markdown отчет</span>
+          </button>
+          <button id="btn-download-json" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Скачать JSON отчет</span>
+          </button>
+          <button id="btn-restart-migration" class="btn btn-primary">
+            <span>Новая миграция</span>
+            <span class="btn-arrow">↻</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <span>WEEEK → Linear Migration Tool &bull; Open Source under MIT License</span>
+        <a href="https://github.com/denis-ershov/weeek-to-linear" target="_blank" rel="noopener" class="footer-link">GitHub Репозиторий</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

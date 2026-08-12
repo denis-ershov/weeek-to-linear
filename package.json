@@ -1,0 +1,70 @@
+{
+  "name": "weeek-to-linear",
+  "version": "0.1.0",
+  "description": "Open-source CLI tool and engine for safe, idempotent migration from WEEEK to Linear",
+  "keywords": [
+    "weeek",
+    "linear",
+    "migration",
+    "task-management",
+    "cli",
+    "open-source"
+  ],
+  "author": "Denis Ershov",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "weeek-to-linear": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli/index.ts",
+    "cli": "tsx src/cli/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/ --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"tests/**/*.{ts,js,json}\" \"docs/**/*.md\"",
+    "clean": "rimraf dist .weeek-linear"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.10.0",
+    "@linear/sdk": "^39.0.0",
+    "chalk": "^5.4.1",
+    "cli-progress": "^3.12.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "p-queue": "^8.1.0",
+    "p-retry": "^6.2.1",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "turndown": "^7.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^22.13.4",
+    "@types/turndown": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
+    "eslint": "^9.20.1",
+    "prettier": "^3.5.1",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.6"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
