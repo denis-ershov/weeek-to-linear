@@ -20,6 +20,8 @@ import type {
   CreateIssueInput,
   CreateDocumentInput,
   UpdateIssueInput,
+  CreateCommentInput,
+  LinearComment,
 } from './types.js';
 
 export interface LinearClientOptions {
@@ -404,5 +406,33 @@ export class LinearClient {
         });
       }),
     ) as Promise<void>;
+  }
+
+  /**
+   * Создание комментария к задаче Linear
+   */
+  async createComment(input: CreateCommentInput): Promise<LinearComment> {
+    return this.queue.add(() =>
+      withRetry(async () => {
+        logger.debug({ issueId: input.issueId, createAsUser: input.createAsUser }, t('logs.linearClient.creatingComment'));
+        const commentPayload = await this.sdk.createComment({
+          issueId: input.issueId,
+          body: input.body,
+          createAsUser: input.createAsUser || undefined,
+          displayIconUrl: input.displayIconUrl || undefined,
+        });
+
+        const comment = await commentPayload.comment;
+        if (!comment) {
+          throw new Error(`Не удалось получить созданный комментарий Linear к задаче ${input.issueId}`);
+        }
+
+        return {
+          id: comment.id,
+          issueId: input.issueId,
+          body: comment.body,
+        };
+      }),
+    ) as Promise<LinearComment>;
   }
 }

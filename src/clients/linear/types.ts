@@ -121,3 +121,16 @@ export interface UpdateIssueInput {
   projectId?: string;
   parentId?: string;
 }
+
+export interface CreateCommentInput {
+  issueId: string;
+  body: string;
+  createAsUser?: string;
+  displayIconUrl?: string;
+}
+
+export interface LinearComment {
+  id: string;
+  issueId: string;
+  body: string;
+}

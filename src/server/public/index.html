@@ -285,12 +285,12 @@
                 </div>
               </label>
 
-              <label class="switch-control">
-                <input type="checkbox" id="opt-documents" checked>
+              <label class="switch-control disabled">
+                <input type="checkbox" id="opt-documents" disabled>
                 <span class="switch-slider"></span>
                 <div class="switch-label">
                   <span class="switch-title" data-i18n="step3.docsTitle">Переносить документы базы знаний</span>
-                  <span class="switch-desc" data-i18n="step3.docsDesc">Создавать статьи в Linear Project Documents</span>
+                  <span class="switch-desc text-warning" data-i18n="step3.docsDisabledDesc">⚠️ Временно недоступно (в публичном API WEEEK отсутствует эндпоинт документов)</span>
                 </div>
               </label>
 
@@ -316,8 +316,36 @@
                   </label>
                   <label class="radio-label">
                     <input type="radio" name="syncStrategy" value="update_status_only">
-                    <span><strong data-i18n="step3.syncStatusOnly">Обновлять только статус и дедлайн</strong> <span data-i18n="step3.syncStatusOnlyDesc">(сохраняя описание)</span></span>
+                    <span><strong data-i18n="step3.syncStatusOnly">Обновлять только статус и дедлайн</strong> <span data-i18n="step3.syncStatusOnlyDesc">(без обновления описания)</span></span>
                   </label>
+                </div>
+              </div>
+
+              <div class="form-group margin-top-sm disabled-group">
+                <label data-i18n="step3.commentsLabel">Перенос комментариев к задачам:</label>
+                <p class="form-help text-warning" data-i18n="step3.commentsDisabledDesc">⚠️ Временно недоступно (в публичном API WEEEK отсутствует эндпоинт комментариев)</p>
+                <div class="radio-group">
+                  <label class="radio-label disabled">
+                    <input type="radio" name="commentStrategy" value="none" checked disabled>
+                    <span><strong data-i18n="step3.commentNone">Не переносить</strong> <span data-i18n="step3.commentNoneDesc">(пропустить комментарии)</span></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group margin-top-sm">
+                <label data-i18n="step3.customFieldsLabel">Кастомные поля задач (WEEEK):</label>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="customFieldsStrategy" value="append_to_description" checked>
+                    <span><strong data-i18n="step3.customFieldsAppend">Добавлять в описание Markdown</strong> <span data-i18n="step3.customFieldsAppendDesc">(структурированный блок в конце задачи)</span></span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="customFieldsStrategy" value="none">
+                    <span><strong data-i18n="step3.customFieldsNone">Не переносить</strong> <span data-i18n="step3.customFieldsNoneDesc">(пропускать кастомные поля)</span></span>
+                  </label>
+                </div>
+                <div class="margin-top-xs">
+                  <input type="text" id="ignoredCustomFieldsInput" class="form-control text-sm" placeholder="Игнорируемые поля через запятую (например: Бюджет, Секретно)" data-i18n-placeholder="step3.ignoredCustomFieldsPlaceholder">
                 </div>
               </div>
             </div>

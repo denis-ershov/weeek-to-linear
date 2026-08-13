@@ -1,6 +1,5 @@
-import { CONSTANTS } from '../config/constants.js';
-import type { WeeekPriority, LinearPriority, WatcherStrategy } from './types.js';
-import type { WeeekTask, WeeekProject } from '../clients/weeek/types.js';
+import type { WeeekPriority, LinearPriority, WatcherStrategy, CustomFieldsStrategy } from './types.js';
+import type { WeeekTask, WeeekProject, WeeekCustomField } from '../clients/weeek/types.js';
 import type {
   LinearWorkflowState,
   LinearUser,
@@ -23,6 +22,9 @@ export interface MappingContext {
   watcherStrategy?: WatcherStrategy;
   globalWatcherUserId?: string;
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
+  customFieldsStrategy?: CustomFieldsStrategy;
+  customFieldsMapping?: Record<string, string>;
+  ignoredCustomFields?: string[];
 }
 
 export interface TaskMappingResult {
@@ -329,6 +331,62 @@ export function mapProject(weeekProject: WeeekProject, teamId: string): CreatePr
   };
 }
 
+import { CONSTANTS } from '../config/constants.js';
+
+/**
+ * Форматирование кастомных полей WEEEK в Markdown блок для описания задачи Linear
+ */
+export function formatCustomFieldsToMarkdown(
+  customFields: WeeekCustomField[] | undefined,
+  context: MappingContext,
+): string | undefined {
+  if (!customFields || customFields.length === 0) return undefined;
+  if (context.customFieldsStrategy === 'none') return undefined;
+
+  const mapping = context.customFieldsMapping || {};
+  const ignoredSet = new Set(
+    (context.ignoredCustomFields || []).map(f => String(f).trim().toLowerCase()),
+  );
+
+  const formattedLines: string[] = [];
+
+  for (const cf of customFields) {
+    if (!cf || cf.value === undefined || cf.value === null || cf.value === '') continue;
+
+    const rawKey = cf.id || cf.name || '';
+    const rawKeyLower = rawKey.trim().toLowerCase();
+    const rawNameLower = cf.name ? cf.name.trim().toLowerCase() : '';
+
+    // Пропуск, если поле указано в ignoredCustomFields
+    if (ignoredSet.has(rawKeyLower) || (rawNameLower && ignoredSet.has(rawNameLower))) {
+      continue;
+    }
+
+    // Пропуск или переименование по customFieldsMapping
+    const mappedVal = mapping[rawKey] || (cf.name ? mapping[cf.name] : undefined);
+    if (mappedVal === 'skip') {
+      continue;
+    }
+
+    const fieldDisplayName = mappedVal || cf.name || cf.id || 'Поле';
+
+    let displayVal = '';
+    if (typeof cf.value === 'object') {
+      displayVal = JSON.stringify(cf.value);
+    } else {
+      displayVal = String(cf.value).trim();
+    }
+
+    if (displayVal) {
+      formattedLines.push(`- **${fieldDisplayName}:** ${displayVal}`);
+    }
+  }
+
+  if (formattedLines.length === 0) return undefined;
+
+  return `\n\n---\n### 📋 Кастомные поля (WEEEK)\n` + formattedLines.join('\n');
+}
+
 /**
  * Комплексное преобразование задачи WEEEK в CreateIssueInput Linear
  */
@@ -336,8 +394,12 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
   const warnings: string[] = [];
   const { linearPriority, needsHoldLabel } = mapPriority(weeekTask.priority);
 
-  // 1. Описание
-  const description = normalizeDescriptionToMarkdown(weeekTask.description);
+  // 1. Описание с учётом кастомных полей
+  let description = normalizeDescriptionToMarkdown(weeekTask.description) || '';
+  const customFieldsMd = formatCustomFieldsToMarkdown(weeekTask.customFields, context);
+  if (customFieldsMd) {
+    description = description ? description + customFieldsMd : customFieldsMd.trimStart();
+  }
 
   // 2. Дедлайн (dueDate)
   const dueDate = formatLinearDueDate(weeekTask.dateEnd || weeekTask.date);

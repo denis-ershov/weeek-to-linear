@@ -53,6 +53,11 @@ program
     'skip',
   )
   .option(
+    '--comment-strategy <strategy>',
+    t('cli.flags.commentStrategy'),
+    'none',
+  )
+  .option(
     '--watcher-strategy <strategy>',
     t('cli.flags.watcherStrategy'),
     'none',
@@ -63,11 +68,18 @@ program
     t('cli.flags.unmatchedUser'),
     'unassigned',
   )
-  .option('--column-mapping <json>', t('cli.flags.columnMapping'))
-  .option('--user-mapping <json>', t('cli.flags.userMapping'))
+  .option(
+    '--custom-fields-strategy <strategy>',
+    'Стратегия переноса кастомных полей (append_to_description|none)',
+    'append_to_description',
+  )
+  .option('--custom-fields-mapping <json>', 'JSON сопоставления кастомных полей WEEEK')
+  .option('--ignore-custom-fields <list>', 'Список имён или ID кастомных полей для пропуска (через запятую)')
   .action(options => {
     let parsedColumnMapping: Record<string, string> | undefined;
     let parsedUserMapping: Record<string, string> | undefined;
+    let parsedCustomFieldsMapping: Record<string, string> | undefined;
+    let parsedIgnoreCustomFields: string[] | undefined;
 
     if (options.columnMapping) {
       try {
@@ -85,6 +97,21 @@ program
       }
     }
 
+    if (options.customFieldsMapping) {
+      try {
+        parsedCustomFieldsMapping = JSON.parse(options.customFieldsMapping);
+      } catch {
+        console.error(`${t('cli.migrate.jsonError')} --custom-fields-mapping`);
+      }
+    }
+
+    if (options.ignoreCustomFields) {
+      parsedIgnoreCustomFields = String(options.ignoreCustomFields)
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
     return migrateCommand({
       dryRun: options.dryRun,
       resume: options.resume,
@@ -98,6 +125,10 @@ program
       recreateAllColumns: options.recreateColumns,
       includeDeleted: options.includeDeleted,
       syncStrategy: options.syncStrategy,
+      commentStrategy: options.commentStrategy,
+      customFieldsStrategy: options.customFieldsStrategy,
+      customFieldsMapping: parsedCustomFieldsMapping,
+      ignoreCustomFields: parsedIgnoreCustomFields,
       watcherStrategy: options.watcherStrategy,
       globalWatcher: options.globalWatcher,
       unmatchedUser: options.unmatchedUser,

@@ -46,6 +46,13 @@ export interface WeeekTag {
   color?: string | null;
 }
 
+export interface WeeekCustomField {
+  id: string;
+  name?: string | null;
+  type?: string | null;
+  value?: unknown;
+}
+
 export interface WeeekTask {
   id: string;
   parentId?: string | null;
@@ -65,10 +72,24 @@ export interface WeeekTask {
   isDeleted?: boolean;
   assignees?: Array<string | { id?: string; email?: string; name?: string }>;
   tags?: Array<string | { id?: string; title?: string }>;
+  customFields?: WeeekCustomField[];
 }
 
 export interface WeeekTasksResponse {
   tasks: WeeekTask[];
   hasMore?: boolean;
   total?: number;
+}
+
+export interface WeeekComment {
+  id: string;
+  taskId?: string | null;
+  text: string;
+  authorId?: string | null;
+  author?: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  createdAt?: string | null;
 }

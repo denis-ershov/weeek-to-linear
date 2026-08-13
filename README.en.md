@@ -15,12 +15,16 @@
 ## ✨ Key Features
 
 - 🚀 **Comprehensive data migration**: automatic migration of projects, tasks, subtask hierarchy, priorities, deadlines, labels, and assignees.
+- 💬 **Task comments migration**: *Temporarily disabled due to the lack of public REST task comment endpoints in official WEEEK API.*
+- 📋 **WEEEK Custom Fields**:
+  - Format text, select, numeric, and system custom fields into a structured Markdown block in issue description.
+  - Configure mapping, renaming, or ignoring specific custom fields.
 - 📋 **Smart Kanban Board & Column Migration**:
   - Automatic recognition of WEEEK columns and heuristic matching to Linear Workflow States.
   - **Auto-create missing states**: automatically create new Workflow States in Linear with the correct base type (`backlog`, `unstarted`, `started`, `completed`, `canceled`) and color.
   - **Rename states**: option to rename matched Linear states to the exact names and colors from WEEEK.
   - **Full replacement (1-to-1)**: archive extra default Linear states and recreate the exact WEEEK column structure.
-- 📚 **Knowledge Base document migration**: load articles from WEEEK Knowledge Base and create documents in Linear Project Documents, preserving Markdown formatting.
+- ⚠️ **Knowledge Base document migration**: *Temporarily disabled due to the lack of public REST document endpoints in official WEEEK API.*
 - 👥 **Personal user mapping (Assignees)**:
   - Automatic matching by Email.
   - Individual selector per team member with Fallback support (`unassigned`, `skip`, assign to a specific user).
@@ -137,6 +141,7 @@ pnpm cli migrate
 | Flag | Description |
 | :--- | :--- |
 | `-d, --dry-run` | Dry-run mode: validate and calculate without changing data in Linear |
+| `-l, --lang <ru\|en>` | CLI interface language (`ru` or `en`, default `ru` or from `WEEEK_LANG`) |
 | `-r, --resume` | Resume migration from the last stop point |
 | `-f, --force` | Force restart with cleared saved state |
 | `-p, --weeek-project <id>` | Non-interactive migration of a specific WEEEK project |
@@ -145,15 +150,17 @@ pnpm cli migrate
 | `--rename-matched-states` | Rename matched Linear states to WEEEK format |
 | `--recreate-columns` | Full replacement: archive extra states and recreate structure 1-to-1 |
 | `--no-completed` | Exclude completed tasks from migration |
-| `--no-docs` | Skip knowledge base documents |
+| `--no-docs` | Skip documents *(disabled due to missing WEEEK API)* |
 | `--include-deleted` | Include deleted WEEEK tasks in migration |
 | `--sync-strategy <strategy>` | Re-run behavior: `skip` (default), `update_all`, `update_status_only` |
+| `--custom-fields-strategy <strategy>` | Custom fields strategy: `append_to_description` (default), `none` |
+| `--custom-fields-mapping <json>` | JSON custom fields mapping string |
+| `--ignore-custom-fields <list>` | Comma-separated list of custom field names/IDs to skip |
 | `--watcher-strategy <strategy>` | Subscriber strategy: `none`, `secondary_assignees`, `global_watcher`, `both` |
 | `--global-watcher <userId>` | Linear user ID to assign as global watcher |
 | `--unmatched-user <strategy>` | Action for unmatched users: `unassigned` (default), `skip`, `abort` |
 | `--column-mapping <json>` | JSON column mapping string (e.g. `'{"col_1":"st_1"}'`) |
 | `--user-mapping <json>` | JSON user mapping string (e.g. `'{"usr_w":"usr_lin"}'`) |
-| `-l, --lang <ru\|en>` | CLI interface language (`ru` or `en`, default `ru` or from `WEEEK_LANG`) |
 
 ---
 
@@ -217,6 +224,15 @@ Detailed architecture documentation is available in the `docs/` directory:
 - [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md) — Threat Model (STRIDE) and Zero-Leak standards.
 - [docs/CLI_ARCHITECTURE.md](docs/CLI_ARCHITECTURE.md) — CLI commands and terminal interface spec.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — Project change log.
+
+---
+
+## 💖 Support the Project
+
+If this tool saved you time and helped you migrate from WEEEK to Linear, consider supporting the author:
+
+- 🎁 [**DonationAlerts**](https://www.donationalerts.com/r/i_w1ns_i)
+- ☕ [**Buy Me a Coffee**](https://buymeacoffee.com/it.dns)
 
 ---
 

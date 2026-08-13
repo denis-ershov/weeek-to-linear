@@ -647,6 +647,16 @@
     };
 
     const selectedSyncStrategy = document.querySelector('input[name="syncStrategy"]:checked')?.value || 'skip';
+    let selectedCommentStrategy = document.querySelector('input[name="commentStrategy"]:checked')?.value || 'none';
+    if (selectedSyncStrategy === 'update_comments_only' && selectedCommentStrategy === 'none') {
+      selectedCommentStrategy = 'text_only';
+    }
+    const selectedCustomFieldsStrategy = document.querySelector('input[name="customFieldsStrategy"]:checked')?.value || 'append_to_description';
+    const ignoredCustomFieldsRaw = document.getElementById('ignoredCustomFieldsInput')?.value || '';
+    const ignoredCustomFields = ignoredCustomFieldsRaw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
 
     const payload = {
       weeekToken: state.weeekToken,
@@ -663,6 +673,9 @@
       watcherStrategy: selectWatcherStrategy.value,
       globalWatcherUserId: selectGlobalWatcher.value || undefined,
       syncStrategy: selectedSyncStrategy,
+      commentStrategy: selectedCommentStrategy,
+      customFieldsStrategy: selectedCustomFieldsStrategy,
+      ignoredCustomFields: ignoredCustomFields.length > 0 ? ignoredCustomFields : undefined,
       weeekProjectId: state.selectedProjectIds.size === 1 ? Array.from(state.selectedProjectIds)[0] : undefined,
     };
 

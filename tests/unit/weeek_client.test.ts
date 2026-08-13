@@ -172,4 +172,53 @@ describe('clients/weeek/client', () => {
     expect(docs[0]?.content).toContain('# Добро пожаловать');
     expect(docs[0]?.content).toContain('Инструкция по развертыванию');
   });
+
+  it('getSingleDocument() должен запрашивать тело статьи, если оно пустое в списке', async () => {
+    const mockArticle = {
+      article: {
+        id: 502,
+        name: 'Детальная статья',
+        content: '<h1>Заголовок статьи</h1><p>Текст статьи</p>',
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockArticle,
+    });
+
+    const doc = await client.getSingleDocument('502');
+    expect(doc).not.toBeNull();
+    expect(doc?.id).toBe('502');
+    expect(doc?.title).toBe('Детальная статья');
+    expect(doc?.content).toContain('# Заголовок статьи');
+  });
+
+  it('getTaskComments() должен запрашивать и парсить комментарии к задаче', async () => {
+    const mockComments = {
+      comments: [
+        {
+          id: 1001,
+          taskId: 2001,
+          text: 'Первый комментарий',
+          authorId: 'usr-1',
+          author: { name: 'Алексей', email: 'alex@example.com' },
+          createdAt: '2026-08-13T10:00:00Z',
+        },
+      ],
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockComments,
+    });
+
+    const comments = await client.getTaskComments('2001');
+    expect(comments).toHaveLength(1);
+    expect(comments[0]?.id).toBe('1001');
+    expect(comments[0]?.text).toBe('Первый комментарий');
+    expect(comments[0]?.author?.name).toBe('Алексей');
+  });
 });

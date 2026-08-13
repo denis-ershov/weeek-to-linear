@@ -4,6 +4,56 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
 
+## [0.3.3] - 2026-08-13
+
+### Изменено
+- **Запрет переноса документов базы знаний (Documents Migration)**:
+  - Опция переноса документов заблокирована в Web UI (тумблер `#opt-documents` переведён в статус `disabled` с поясняющей подписью) и выключена в ядре `MigrationEngine`.
+  - В документации (`README.md`, `README.en.md`, `CHANGELOG.md`) зафиксирована причина недоступности: отсутствие общедоступных REST-эндпоинтов для получения документов базы знаний в публичном API WEEEK.
+
+- **Запрет переноса комментариев к задачам (Task Comments Migration)**:
+  - Опция переноса комментариев заблокирована в Web UI (переключатели `commentStrategy` переведены в статус `disabled` с поясняющей подписью) и отключена в ядре `MigrationEngine`.
+
+---
+
+## [0.3.2] - 2026-08-13
+
+### Добавлено
+- **Перенос кастомных полей задач (Task Custom Fields Migration)**:
+  - Поддержка нормализации кастомных полей WEEEK (`customFields`/`fields`/`custom_fields`) через Zod-схему в единый формат `{ id, name, type, value }`.
+  - Форматирование кастомных полей в виде структурированного Markdown-блока `### 📋 Кастомные поля (WEEEK)` в конце описания задачи Linear при `customFieldsStrategy: append_to_description`.
+  - Возможность явного сопоставления названий полей (`customFieldsMapping`), пропуска полей (`'skip'`) и фильтрации через список исключений (`ignoredCustomFields` / CLI `--ignore-custom-fields`).
+  - Добавлены интерактивные элементы управления кастомными полями на Шаге 3 Web UI и CLI флаги `--custom-fields-strategy`, `--custom-fields-mapping`, `--ignore-custom-fields`.
+
+### Исправлено
+- **Загрузка проектных документов WEEEK (Project Documents)**:
+  - Добавлена поддержка эндпоинтов проектных документов WEEEK по структуре `/ws/projects/${projectId}/documents`, `/projects/${projectId}/documents`, `/ws/tm/projects/${projectId}/documents`, `/ws/kb/projects/${projectId}/documents` с поддержкой параметров `project_id` (snake_case) и `projectId`.
+  - Расширены ключи парсинга в ответе WEEEK REST API: `categories`, `tree`, `result`, `kb`, `pages`, `nodes`, `projectDocuments`.
+  - Обновлён детальный эндпоинт `getSingleDocument()` для вызова `/ws/project-documents/:id` и `/ws/documents/:id`.
+- **Логика работы `syncStrategy: update_comments_only`**:
+  - Исправлен автоматический форсированный вызов пере переноса комментариев (`commentStrategy: text_only`), если пользователь выбрал стратегию `update_comments_only` с неустановленным режимом комментариев (`none`).
+  - Добавлена поддержка WEEEK API эндпоинтов комментариев `/ws/tm/tasks/${taskId}/comments` и `/tm/comments?task_id=${taskId}`.
+
+---
+
+## [0.3.1] - 2026-08-13
+
+### Добавлено
+- **Миграция комментариев к задачам (Task Comments Migration)**:
+  - Поддержка трех стратегий переноса комментариев (`none` | `text_only` | `mapped_authors`).
+  - Добавлены типы `WeeekComment`, `CreateCommentInput`, `LinearComment` и методы `getTaskComments()` в WEEEK клиенте и `createComment()` в Linear клиенте.
+  - Форматирование текста комментария в режиме `text_only` с указанием имени автора WEEEK, либо маппинг на реальных пользователей Linear (`createAsUser`) в режиме `mapped_authors`.
+  - Возможность выбора стратегии комментариев через CLI флаг `--comment-strategy <none|text_only|mapped_authors>` и переключатель в Web UI (Step 3).
+- **Стратегия повторного запуска комментариев (`update_comments_only`)**:
+  - Добавлена новая стратегия `syncStrategy: update_comments_only` ("Обновлять только комментарии") — при повторном запуске поля ранее созданных задач не меняются, но дозагружаются их комментарии.
+  - Обновлены и уточнены подписи для всех 4-х стратегий повторного запуска в CLI и Web UI с четким указанием влияния на комментарии (`skip`: без обновления задач и комментариев, `update_all`: полное обновление полей и комментариев, `update_status_only`: обновление статуса/дедлайна без комментариев, `update_comments_only`: перенос только комментариев).
+
+### Исправлено
+- **Исправление переноса документов базы знаний (Knowledge Base)**:
+  - Реализован метод `getSingleDocument(docId)` в клиенте WEEEK для автоматической подгрузки полного текста статей из эндпоинтов `/ws/kb/articles/:id` и `/kb/articles/:id`, когда списочный эндпоинт WEEEK возвращает пустое содержимое (`content: ""`).
+  - Добавлена логика `fallbackProjectId` для Linear Project Documents — если у документа WEEEK нет привязки к конкретному проекту или его проект не мигрировался, документ привязывается к первому перенесенному проекту Linear, удовлетворяя обязательное требование GraphQL API Linear `documentCreate`.
+- **Статистика отчёта**: добавлена строка со статистикой комментариев (`total`, `created`, `skipped`, `failed`) в Markdown и JSON итоговых отчётах миграции.
+
 ---
 
 ## [0.3.0] - 2026-08-12

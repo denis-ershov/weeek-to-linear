@@ -42,7 +42,7 @@ export type WatcherStrategy = 'none' | 'secondary_assignees' | 'global_watcher' 
 /**
  * Стратегии повторной синхронизации
  */
-export type SyncStrategy = 'skip' | 'update_all' | 'update_status_only';
+export type SyncStrategy = 'skip' | 'update_all' | 'update_status_only' | 'update_comments_only';
 
 /**
  * Интерфейс состояния миграции (.weeek-linear/state.json)
@@ -103,6 +103,9 @@ export interface MigrationState {
   >;
 }
 
+export type CommentStrategy = 'none' | 'text_only' | 'mapped_authors';
+export type CustomFieldsStrategy = 'append_to_description' | 'none';
+
 /**
  * Конфигурация запуска миграции
  */
@@ -123,6 +126,10 @@ export interface MigrationOptions {
   watcherStrategy?: WatcherStrategy;
   globalWatcherUserId?: string;
   syncStrategy?: SyncStrategy;
+  commentStrategy?: CommentStrategy;
+  customFieldsStrategy?: CustomFieldsStrategy;
+  customFieldsMapping?: Record<string, string>; // weeekFieldId/name -> displayName | 'skip'
+  ignoredCustomFields?: string[]; // Массив ID или имён полей для пропуска
   logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
 }
@@ -137,6 +144,7 @@ export interface PreflightValidationResult {
   usersCount: number;
   labelsCount: number;
   documentsCount?: number;
+  commentsCount?: number;
   warnings: string[];
   errors: string[];
 }
@@ -174,9 +182,15 @@ export interface MigrationSummary {
     skipped: number;
     failed: number;
   };
+  comments?: {
+    total: number;
+    created: number;
+    skipped: number;
+    failed: number;
+  };
   warnings: string[];
   errors: Array<{
-    entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state';
+    entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state' | 'comment';
     entityId: string;
     message: string;
     recoverable: boolean;

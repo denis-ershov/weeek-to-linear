@@ -141,5 +141,14 @@ describe('integration/engine', () => {
       recreateAllColumns: true,
     });
     expect(mockLinear.createWorkflowState).toHaveBeenCalled();
+
+    // Проверка повторного запуска со стратегией update_comments_only: поля задач пропускаются
+    const commentsOnlyRun = await engine.run({
+      linearTeamKey: 'ENG',
+      syncStrategy: 'update_comments_only',
+    });
+    expect(commentsOnlyRun.summary.tasks.skipped).toBe(2);
+    expect(commentsOnlyRun.summary.tasks.updated).toBe(0);
+    expect(commentsOnlyRun.summary.tasks.created).toBe(0);
   });
 });

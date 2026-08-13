@@ -58,7 +58,11 @@ export class ReportGenerator {
     md += `| **${t('reporter.projects')}** | ${summary.projects.total} | ${summary.projects.created} | 0 | ${summary.projects.skipped} | ${summary.projects.failed} |\n`;
     md += `| **${t('reporter.tasks')}** | ${summary.tasks.total} | ${summary.tasks.created} | ${summary.tasks.updated} | ${summary.tasks.skipped} | ${summary.tasks.failed} |\n`;
     md += `| **${t('reporter.labels')}** | ${summary.labels.total} | ${summary.labels.created} | 0 | ${summary.labels.reused} | 0 |\n`;
-    md += `| **${t('reporter.documents')}** | ${summary.documents.total} | ${summary.documents.created} | 0 | ${summary.documents.skipped} | ${summary.documents.failed} |\n\n`;
+    md += `| **${t('reporter.documents')}** | ${summary.documents.total} | ${summary.documents.created} | 0 | ${summary.documents.skipped} | ${summary.documents.failed} |\n`;
+    if (summary.comments) {
+      md += `| **${t('reporter.comments')}** | ${summary.comments.total} | ${summary.comments.created} | 0 | ${summary.comments.skipped} | ${summary.comments.failed} |\n`;
+    }
+    md += `\n`;
 
     md += `**${tf('reporter.parentsResolved', summary.tasks.parentsResolved, summary.tasks.parentsFailed)}**\n\n`;
 

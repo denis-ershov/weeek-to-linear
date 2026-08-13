@@ -12,6 +12,7 @@ import {
   WeeekTagSchema,
   WeeekBoardColumnSchema,
   WeeekDocumentSchema,
+  WeeekCommentSchema,
 } from './schemas.js';
 import type {
   WeeekProject,
@@ -21,6 +22,7 @@ import type {
   WeeekTag,
   WeeekBoardColumn,
   WeeekDocument,
+  WeeekComment,
 } from './types.js';
 import { z } from 'zod';
 
@@ -348,13 +350,18 @@ export class WeeekClient {
    * Получение списка документов базы знаний (Knowledge Base) WEEEK
    */
   async getDocuments(options: { projectId?: string } = {}): Promise<WeeekDocument[]> {
+    const pid = options.projectId;
     const endpoints = [
-      options.projectId ? `/ws/docs?projectId=${options.projectId}` : null,
-      options.projectId ? `/tm/docs?projectId=${options.projectId}` : null,
-      options.projectId ? `/kb/articles?projectId=${options.projectId}` : null,
-      options.projectId ? `/kb/documents?projectId=${options.projectId}` : null,
-      options.projectId ? `/ws/kb/articles?projectId=${options.projectId}` : null,
-      options.projectId ? `/ws/articles?projectId=${options.projectId}` : null,
+      pid ? `/ws/projects/${pid}/documents` : null,
+      pid ? `/projects/${pid}/documents` : null,
+      pid ? `/ws/tm/projects/${pid}/documents` : null,
+      pid ? `/ws/kb/projects/${pid}/documents` : null,
+      pid ? `/ws/documents?project_id=${pid}` : null,
+      pid ? `/ws/documents?projectId=${pid}` : null,
+      pid ? `/ws/kb/articles?project_id=${pid}` : null,
+      pid ? `/ws/kb/articles?projectId=${pid}` : null,
+      pid ? `/kb/articles?project_id=${pid}` : null,
+      pid ? `/kb/articles?projectId=${pid}` : null,
       '/ws/docs',
       '/tm/docs',
       '/docs',
@@ -398,6 +405,12 @@ export class WeeekClient {
             if (Array.isArray(obj.articles)) {
               items = items.concat(extractItemsRecursively(obj.articles));
             }
+            if (Array.isArray(obj.categories)) {
+              items = items.concat(extractItemsRecursively(obj.categories));
+            }
+            if (Array.isArray(obj.tree)) {
+              items = items.concat(extractItemsRecursively(obj.tree));
+            }
             if (Array.isArray(obj.docs)) {
               items = items.concat(extractItemsRecursively(obj.docs));
             }
@@ -412,12 +425,18 @@ export class WeeekClient {
         const obj = data as Record<string, unknown>;
         const list =
           obj.documents ||
+          obj.projectDocuments ||
           obj.articles ||
           obj.docs ||
           obj.notes ||
           obj.trees ||
+          obj.tree ||
+          obj.categories ||
           obj.folders ||
           obj.items ||
+          obj.pages ||
+          obj.nodes ||
+          obj.result ||
           obj.data;
 
         if (list) {
@@ -438,6 +457,13 @@ export class WeeekClient {
               const parsed = WeeekDocumentSchema.parse(item);
               if (!seenIds.has(parsed.id)) {
                 seenIds.add(parsed.id);
+                // Если содержимое документа не загрузилось в списочном запросе, пробуем запросить отдельно
+                if (!parsed.content || parsed.content.trim().length < 5) {
+                  const fullDoc = await this.getSingleDocument(parsed.id).catch(() => null);
+                  if (fullDoc?.content) {
+                    parsed.content = fullDoc.content;
+                  }
+                }
                 allDocs.push(parsed);
               }
             } catch {
@@ -452,6 +478,89 @@ export class WeeekClient {
 
     logger.debug(tf('logs.weeekClient.docsLoaded', allDocs.length));
     return allDocs;
+  }
+
+  /**
+   * Получение детального содержимого конкретного документа WEEEK по ID
+   */
+  async getSingleDocument(docId: string): Promise<WeeekDocument | null> {
+    const endpoints = [
+      `/ws/project-documents/${docId}`,
+      `/ws/kb/articles/${docId}`,
+      `/kb/articles/${docId}`,
+      `/ws/docs/${docId}`,
+      `/docs/${docId}`,
+      `/ws/articles/${docId}`,
+      `/articles/${docId}`,
+      `/ws/kb/documents/${docId}`,
+      `/ws/documents/${docId}`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const data = await this.request<Record<string, unknown>>(endpoint);
+        if (data && typeof data === 'object') {
+          const raw = data.article || data.document || data.data || data;
+          const parsed = WeeekDocumentSchema.parse(raw);
+          if (parsed && parsed.title) {
+            return parsed;
+          }
+        }
+      } catch {
+        // Пробуем следующий эндпоинт
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Получение комментариев к задаче WEEEK
+   */
+  async getTaskComments(taskId: string): Promise<WeeekComment[]> {
+    const endpoints = [
+      `/ws/tm/tasks/${taskId}/comments`,
+      `/tm/tasks/${taskId}/comments`,
+      `/ws/tasks/${taskId}/comments`,
+      `/tasks/${taskId}/comments`,
+      `/tm/comments?task_id=${taskId}`,
+      `/ws/comments?task_id=${taskId}`,
+      `/tm/comments?taskId=${taskId}`,
+      `/ws/comments?taskId=${taskId}`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const data = await this.request<unknown>(endpoint);
+        const extractList = (raw: unknown): unknown[] => {
+          if (Array.isArray(raw)) return raw;
+          if (raw && typeof raw === 'object') {
+            const r = raw as Record<string, unknown>;
+            const list = r.comments || r.data || r.items;
+            if (Array.isArray(list)) return list;
+          }
+          return [];
+        };
+
+        const list = extractList(data);
+        if (list.length > 0) {
+          const comments: WeeekComment[] = [];
+          for (const item of list) {
+            try {
+              const parsed = WeeekCommentSchema.parse(item);
+              if (parsed.text) {
+                comments.push({ ...parsed, taskId });
+              }
+            } catch {
+              // Игнорируем некорректные элементы
+            }
+          }
+          if (comments.length > 0) return comments;
+        }
+      } catch {
+        // Пробуем следующий эндпоинт
+      }
+    }
+    return [];
   }
 
   /**

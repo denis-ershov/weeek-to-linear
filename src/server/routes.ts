@@ -431,6 +431,10 @@ export class ApiRouter {
               watcherStrategy: body.watcherStrategy ?? 'none',
               globalWatcherUserId: body.globalWatcherUserId,
               syncStrategy: body.syncStrategy ?? 'skip',
+              commentStrategy: body.commentStrategy ?? 'none',
+              customFieldsStrategy: body.customFieldsStrategy ?? 'append_to_description',
+              customFieldsMapping: body.customFieldsMapping,
+              ignoredCustomFields: body.ignoredCustomFields,
               unmatchedUserStrategy: body.unmatchedUserStrategy ?? 'unassigned',
             });
 

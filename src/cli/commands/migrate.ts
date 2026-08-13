@@ -21,7 +21,11 @@ export async function migrateCommand(cliOptions: {
   renameMatchedStates?: boolean;
   recreateAllColumns?: boolean;
   includeDeleted?: boolean;
-  syncStrategy?: 'skip' | 'update_all' | 'update_status_only';
+  syncStrategy?: 'skip' | 'update_all' | 'update_status_only' | 'update_comments_only';
+  commentStrategy?: 'none' | 'text_only' | 'mapped_authors';
+  customFieldsStrategy?: 'append_to_description' | 'none';
+  customFieldsMapping?: Record<string, string>;
+  ignoreCustomFields?: string[];
   watcherStrategy?: 'none' | 'secondary_assignees' | 'global_watcher' | 'both';
   globalWatcher?: string;
   unmatchedUser?: 'unassigned' | 'skip' | 'abort';
@@ -304,6 +308,10 @@ export async function migrateCommand(cliOptions: {
     userMapping: cliOptions.userMapping,
     includeDeleted: cliOptions.includeDeleted ?? false,
     syncStrategy,
+    commentStrategy: cliOptions.commentStrategy || 'none',
+    customFieldsStrategy: cliOptions.customFieldsStrategy ?? 'append_to_description',
+    customFieldsMapping: cliOptions.customFieldsMapping,
+    ignoredCustomFields: cliOptions.ignoreCustomFields,
     watcherStrategy,
     globalWatcherUserId,
     unmatchedUserStrategy: cliOptions.unmatchedUser || 'unassigned',

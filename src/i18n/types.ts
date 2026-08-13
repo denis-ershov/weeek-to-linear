@@ -45,6 +45,7 @@ export interface I18nDictionary {
       recreateColumns: string;
       includeDeleted: string;
       syncStrategy: string;
+      commentStrategy: string;
       watcherStrategy: string;
       globalWatcher: string;
       unmatchedUser: string;
@@ -135,6 +136,7 @@ export interface I18nDictionary {
       syncSkip: string;
       syncUpdateAll: string;
       syncUpdateStatus: string;
+      syncUpdateComments: string;
       resumeConfirm: string;
       forceConfirm: string;
       dryRunComplete: string;
@@ -225,6 +227,7 @@ export interface I18nDictionary {
       optSyncSkip: string;
       optSyncUpdateAll: string;
       optSyncStatus: string;
+      optSyncComments: string;
       optDocuments: string;
       optCompleted: string;
       optDeleted: string;
@@ -315,6 +318,7 @@ export interface I18nDictionary {
       creatingLabel: string;
       creatingIssue: string;
       creatingDocument: string;
+      creatingComment: string;
       subscribingWatcher: string;
       updatingIssue: string;
     };
@@ -336,6 +340,7 @@ export interface I18nDictionary {
       resolvingHierarchy: string;
       migratingTasks: string;
       migratingDocs: string;
+      migratingComments: string;
       generatingReport: string;
     };
     errors: {
@@ -394,6 +399,7 @@ export interface I18nDictionary {
     tasks: string;
     labels: string;
     documents: string;
+    comments: string;
     parentsResolved: string;
     warningsTitle: string;
     errorsTitle: string;

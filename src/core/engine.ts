@@ -13,7 +13,6 @@ import {
 import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
 import { t, tf } from '../i18n/index.js';
-import { normalizeDocumentContentToMarkdown } from '../utils/markdown.js';
 import type {
   MigrationOptions,
   MigrationSummary,
@@ -25,7 +24,7 @@ export interface MigrationEngineHooks {
   onStage?: (stageNumber: number, stageName: string) => void;
   onProgress?: (type: 'projects' | 'labels' | 'tasks' | 'documents', current: number, total: number, itemName?: string) => void;
   onWarning?: (message: string) => void;
-  onError?: (error: { entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state'; entityId: string; message: string }) => void;
+  onError?: (error: { entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state' | 'comment'; entityId: string; message: string }) => void;
 }
 
 export class MigrationEngine {
@@ -155,46 +154,19 @@ export class MigrationEngine {
     const allWeeekTasks: WeeekTask[] = [];
     const allWeeekDocs: WeeekDocument[] = [];
     const allWeeekColumns: WeeekBoardColumn[] = [];
-    const seenDocIds = new Set<string>();
 
-    // 10.1 Загрузка документов рабочего пространства (Knowledge Base)
-    if (options.includeDocuments !== false) {
-      try {
-        const wsDocs = await this.weeekClient.getDocuments();
-        for (const d of wsDocs) {
-          if (!seenDocIds.has(d.id)) {
-            seenDocIds.add(d.id);
-            allWeeekDocs.push(d);
-          }
-        }
-      } catch (err) {
-        logger.warn(
-          { error: (err as Error).message },
-          'Не удалось загрузить документы рабочего пространства WEEEK',
-        );
-      }
-    }
-
+    // Документы WEEEK не запрашиваются из-за отсутствия общедоступных эндпоинтов в WEEEK API
     for (const project of allWeeekProjects) {
-      const [tasks, docs, cols] = await Promise.all([
+      const [tasks, cols] = await Promise.all([
         this.weeekClient.getTasks({
           projectId: project.id,
           includeCompleted: options.includeCompleted ?? true,
           includeDeleted: options.includeDeleted ?? false,
         }),
-        options.includeDocuments !== false
-          ? this.weeekClient.getDocuments({ projectId: project.id }).catch(() => [])
-          : Promise.resolve([]),
         this.weeekClient.getBoardColumns({ projectId: project.id }).catch(() => []),
       ]);
 
       allWeeekTasks.push(...tasks);
-      for (const d of docs) {
-        if (!seenDocIds.has(d.id)) {
-          seenDocIds.add(d.id);
-          allWeeekDocs.push(d);
-        }
-      }
       allWeeekColumns.push(...cols);
     }
 
@@ -269,45 +241,12 @@ export class MigrationEngine {
     }
 
     // 12. Создание документов базы знаний (Knowledge Base)
-    if (options.includeDocuments !== false && allWeeekDocs.length > 0) {
-      this.hooks.onStage?.(7, t('engine.stages.migratingDocs'));
-      let docIndex = 0;
-      for (const wDoc of allWeeekDocs) {
-        docIndex++;
-        this.hooks.onProgress?.('documents', docIndex, allWeeekDocs.length, wDoc.title);
-
-        if (this.stateManager.isDocumentMigrated(wDoc.id)) {
-          summary.documents.skipped++;
-          continue;
-        }
-
-        const linearProjectId = wDoc.projectId
-          ? this.stateManager.getLinearProjectId(wDoc.projectId)
-          : undefined;
-
-        try {
-          const markdownContent = normalizeDocumentContentToMarkdown(wDoc.content);
-          const createdDoc = await this.linearClient.createDocument({
-            title: wDoc.title.trim() || 'Документ без названия',
-            content: markdownContent,
-            projectId: linearProjectId,
-            teamId: targetTeam.id,
-          });
-
-          this.stateManager.recordDocument(wDoc.id, createdDoc.id, wDoc.title);
-          summary.documents.created++;
-        } catch (err) {
-          summary.documents.failed++;
-          const errorRecord = {
-            entityType: 'document' as const,
-            entityId: wDoc.id,
-            message: (err as Error).message,
-            recoverable: true,
-          };
-          summary.errors.push(errorRecord);
-          this.hooks.onError?.(errorRecord);
-        }
-      }
+    // Внимание: В публичном API WEEEK отсутствуют общедоступные эндпоинты для получения документов,
+    // поэтому опция переноса документов временно заблокирована.
+    if (options.includeDocuments) {
+      const warnMsg = 'Перенос документов базы знаний недоступен: в публичном API WEEEK отсутствует эндпоинт для работы с документами.';
+      logger.warn(warnMsg);
+      this.hooks.onWarning?.(warnMsg);
     }
 
     // 13. Создание меток (Labels)
@@ -491,6 +430,9 @@ export class MigrationEngine {
       watcherStrategy: options.watcherStrategy || 'none',
       globalWatcherUserId: options.globalWatcherUserId,
       unmatchedUserStrategy: options.unmatchedUserStrategy || 'unassigned',
+      customFieldsStrategy: options.customFieldsStrategy ?? 'append_to_description',
+      customFieldsMapping: options.customFieldsMapping,
+      ignoredCustomFields: options.ignoredCustomFields,
     };
 
     let processedTasksCount = 0;
@@ -529,7 +471,7 @@ export class MigrationEngine {
 
       // Обработка уже перенесенных задач в зависимости от syncStrategy
       if (isMigrated && existingIssueId) {
-        if (syncStrategy === 'skip') {
+        if (syncStrategy === 'skip' || syncStrategy === 'update_comments_only') {
           summary.tasks.skipped++;
           return;
         }
@@ -614,8 +556,18 @@ export class MigrationEngine {
       }
     }
 
+    // 16. Перенос комментариев к задачам (если включена опция)
+    // Внимание: В публичном API WEEEK отсутствуют эндпоинты для работы с комментариями к задачам,
+    // поэтому перенос комментариев недоступен.
+    const commentStrategy = options.commentStrategy || 'none';
+    if (commentStrategy !== 'none') {
+      const warnMsg = 'Перенос комментариев недоступен: в публичном API WEEEK отсутствует REST-эндпоинт комментариев к задачам.';
+      logger.warn(warnMsg);
+      this.hooks.onWarning?.(warnMsg);
+    }
+
     // 20. Генерация отчетов
-    this.hooks.onStage?.(12, t('engine.stages.generatingReport'));
+    this.hooks.onStage?.(13, t('engine.stages.generatingReport'));
     summary.finishedAt = new Date().toISOString();
     summary.durationSeconds = (Date.now() - startTimeMs) / 1000;
 

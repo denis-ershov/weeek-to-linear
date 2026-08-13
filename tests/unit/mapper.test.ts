@@ -193,4 +193,37 @@ describe('core/mapper', () => {
     expect(result.subscriberUserIds).toContain('usr_lead');
     expect(result.subscriberUserIds).not.toContain('usr_1');
   });
+
+  it('mapTask форматирует кастомные поля в описание Markdown при поддержке стратегии append_to_description', () => {
+    const context: MappingContext = {
+      teamId: 'team_1',
+      workflowStates: [{ id: 'st_1', name: 'Todo', type: 'unstarted' }],
+      linearUsers: [],
+      linearLabelsByName: new Map(),
+      tasksStateMap: {},
+      customFieldsStrategy: 'append_to_description',
+      customFieldsMapping: { 'f_budget': 'Бюджет проекта', 'f_secret': 'skip' },
+      ignoredCustomFields: ['f_ignore'],
+    };
+
+    const task = {
+      id: '200',
+      title: 'Задача с полями',
+      description: 'Основное описание',
+      customFields: [
+        { id: 'f_budget', name: 'Budget', value: '100000 RUB' },
+        { id: 'f_secret', name: 'Secret', value: 'Пароль' },
+        { id: 'f_ignore', name: 'Ignore', value: 'Пропустить' },
+        { id: 'f_client', name: 'Клиент', value: 'ООО Ромашка' },
+      ],
+    };
+
+    const result = mapTask(task, context);
+    expect(result.createInput.description).toContain('Основное описание');
+    expect(result.createInput.description).toContain('### 📋 Кастомные поля (WEEEK)');
+    expect(result.createInput.description).toContain('- **Бюджет проекта:** 100000 RUB');
+    expect(result.createInput.description).toContain('- **Клиент:** ООО Ромашка');
+    expect(result.createInput.description).not.toContain('Secret');
+    expect(result.createInput.description).not.toContain('Ignore');
+  });
 });

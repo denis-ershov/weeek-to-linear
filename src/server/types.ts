@@ -2,7 +2,7 @@
  * Типы данных и DTO для веб-сервера и SSE-стриминга сервиса weeek-to-linear.
  */
 
-import type { MigrationSummary, WatcherStrategy, SyncStrategy } from '../core/types.js';
+import type { MigrationSummary, WatcherStrategy, SyncStrategy, CommentStrategy, CustomFieldsStrategy } from '../core/types.js';
 
 export interface ServerStatusResponse {
   ok: boolean;
@@ -58,6 +58,10 @@ export interface StartMigrationRequest {
   watcherStrategy?: WatcherStrategy;
   globalWatcherUserId?: string;
   syncStrategy?: SyncStrategy;
+  commentStrategy?: CommentStrategy;
+  customFieldsStrategy?: CustomFieldsStrategy;
+  customFieldsMapping?: Record<string, string>;
+  ignoredCustomFields?: string[];
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
 }
 
