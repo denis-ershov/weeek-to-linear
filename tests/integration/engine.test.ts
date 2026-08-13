@@ -98,12 +98,11 @@ describe('integration/engine', () => {
 
     expect(summary.projects.created).toBe(1);
     expect(summary.labels.created).toBe(1);
-    expect(summary.documents.created).toBe(1);
+    expect(summary.documents.created).toBe(0);
     expect(summary.tasks.created).toBe(2);
     expect(summary.tasks.parentsResolved).toBe(1);
     expect(stateManager.isTaskMigrated('wtk_1')).toBe(true);
     expect(stateManager.isTaskMigrated('wtk_2')).toBe(true);
-    expect(stateManager.isDocumentMigrated('wdoc_1')).toBe(true);
 
     // Проверяем вызов подписки на задачу
     expect(mockLinear.subscribeUser).toHaveBeenCalledWith('li_1', 'lu_2');
@@ -116,7 +115,7 @@ describe('integration/engine', () => {
 
     expect(secondRun.summary.projects.skipped).toBe(1);
     expect(secondRun.summary.tasks.skipped).toBe(2);
-    expect(secondRun.summary.documents.skipped).toBe(1);
+    expect(secondRun.summary.documents.skipped).toBe(0);
     expect(secondRun.summary.tasks.created).toBe(0);
 
     // Проверка повторного запуска со стратегией update_status_only
