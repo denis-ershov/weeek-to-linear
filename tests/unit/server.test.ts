@@ -22,7 +22,7 @@ describe('server/server', () => {
 
     const data = await res.json();
     expect(data.ok).toBe(true);
-    expect(data.version).toBe('0.3.0');
+    expect(data.version).toBe('0.3.3');
     expect(data.hasEnvTokens).toBeDefined();
   });
 

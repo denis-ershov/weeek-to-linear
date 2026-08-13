@@ -4,7 +4,7 @@
 
 export const CONSTANTS = {
   APP_NAME: 'weeek-to-linear',
-  APP_VERSION: '0.3.0',
+  APP_VERSION: '0.3.3',
   DEFAULT_STATE_FILE: '.weeek-linear/state.json',
   DEFAULT_CONCURRENCY: 3,
   DEFAULT_LOG_LEVEL: 'info' as const,

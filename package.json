@@ -1,6 +1,6 @@
 {
   "name": "weeek-to-linear",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "Open-source CLI tool and engine for safe, idempotent migration from WEEEK to Linear",
   "keywords": [
     "weeek",

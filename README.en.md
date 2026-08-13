@@ -1,7 +1,7 @@
 # WEEEK → Linear Migration Tool
 
 [![CI](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
