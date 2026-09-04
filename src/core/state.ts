@@ -31,6 +31,7 @@ export class StateManager {
       boardColumns: {},
       documents: {},
       tasks: {},
+      comments: {},
     };
   }
 
@@ -55,6 +56,7 @@ export class StateManager {
           boardColumns: parsed.boardColumns || {},
           documents: parsed.documents || {},
           tasks: parsed.tasks || {},
+          comments: parsed.comments || {},
         };
         return this.state;
       }
@@ -191,6 +193,24 @@ export class StateManager {
 
   public getLinearStateIdForColumn(weeekColumnId: string): string | undefined {
     return this.state.boardColumns?.[String(weeekColumnId)]?.linearStateId;
+  }
+
+  public recordComment(weeekCommentId: string, linearCommentId: string, weeekTaskId: string): void {
+    if (!this.state.comments) this.state.comments = {};
+    this.state.comments[String(weeekCommentId)] = {
+      linearCommentId,
+      weeekTaskId: String(weeekTaskId),
+      migratedAt: new Date().toISOString(),
+    };
+    this.saveState();
+  }
+
+  public isCommentMigrated(weeekCommentId: string): boolean {
+    return Boolean(this.state.comments?.[String(weeekCommentId)]);
+  }
+
+  public getLinearCommentId(weeekCommentId: string): string | undefined {
+    return this.state.comments?.[String(weeekCommentId)]?.linearCommentId;
   }
 
   public clear(): void {

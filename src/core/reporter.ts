@@ -22,6 +22,7 @@ export class ReportGenerator {
         users: state.users,
         boardColumns: state.boardColumns || {},
         documents: state.documents || {},
+        comments: state.comments || {},
       },
       exportedAt: new Date().toISOString(),
     };

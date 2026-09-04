@@ -9,6 +9,7 @@ export type WeeekTaskId = string & { readonly __brand: unique symbol };
 export type WeeekTagId = string & { readonly __brand: unique symbol };
 export type WeeekUserId = string & { readonly __brand: unique symbol };
 export type WeeekDocId = string & { readonly __brand: unique symbol };
+export type WeeekCommentId = string & { readonly __brand: unique symbol };
 
 export type LinearId = string & { readonly __brand: unique symbol };
 export type LinearProjectId = string & { readonly __brand: unique symbol };
@@ -18,6 +19,7 @@ export type LinearUserId = string & { readonly __brand: unique symbol };
 export type LinearTeamId = string & { readonly __brand: unique symbol };
 export type LinearWorkflowStateId = string & { readonly __brand: unique symbol };
 export type LinearDocId = string & { readonly __brand: unique symbol };
+export type LinearCommentId = string & { readonly __brand: unique symbol };
 
 export const makeWeeekId = <T extends string>(id: string | number): T => String(id) as T;
 export const makeLinearId = <T extends string>(id: string): T => id as T;
@@ -98,6 +100,14 @@ export interface MigrationState {
       linearIssueKey?: string;
       title: string;
       parentId?: string | null;
+      migratedAt: string;
+    }
+  >;
+  comments?: Record<
+    string,
+    {
+      linearCommentId: string;
+      weeekTaskId: string;
       migratedAt: string;
     }
   >;
@@ -190,7 +200,16 @@ export interface MigrationSummary {
   };
   warnings: string[];
   errors: Array<{
-    entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state' | 'comment';
+    entityType:
+      | 'project'
+      | 'task'
+      | 'label'
+      | 'relation'
+      | 'auth'
+      | 'document'
+      | 'watcher'
+      | 'state'
+      | 'comment';
     entityId: string;
     message: string;
     recoverable: boolean;

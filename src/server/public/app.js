@@ -31,6 +31,7 @@
       projects: 0,
       tasks: 0,
       labels: 0,
+      comments: 0,
       docs: 0,
       warnings: 0,
       errors: 0,
@@ -93,6 +94,7 @@
   const cntProjects = document.getElementById('cnt-projects');
   const cntTasks = document.getElementById('cnt-tasks');
   const cntLabels = document.getElementById('cnt-labels');
+  const cntComments = document.getElementById('cnt-comments');
   const cntDocs = document.getElementById('cnt-docs');
   const cntWarnings = document.getElementById('cnt-warnings');
   const cntErrors = document.getElementById('cnt-errors');
@@ -137,7 +139,7 @@
   if (btnCloseAboutModal) btnCloseAboutModal.addEventListener('click', closeAboutModal);
   if (btnCloseAboutOk) btnCloseAboutOk.addEventListener('click', closeAboutModal);
   if (aboutModal) {
-    aboutModal.addEventListener('click', (e) => {
+    aboutModal.addEventListener('click', e => {
       if (e.target === aboutModal) closeAboutModal();
     });
   }
@@ -218,7 +220,8 @@
       statusLinear.className = 'status-indicator ok';
       statusLinear.textContent = window.i18n.t('status.connected');
       document.getElementById('linear-user-name').textContent = data.linearViewer.name;
-      document.getElementById('linear-user-org').textContent = data.linearViewer.organizationName || data.linearViewer.email;
+      document.getElementById('linear-user-org').textContent =
+        data.linearViewer.organizationName || data.linearViewer.email;
       linearUserInfo.classList.remove('hidden');
 
       btnStep1Next.disabled = false;
@@ -259,7 +262,8 @@
       const projectsData = await projectsRes.json();
       const teamsData = await teamsRes.json();
 
-      if (!projectsRes.ok) throw new Error(projectsData.error || window.i18n.t('step2.projectsError'));
+      if (!projectsRes.ok)
+        throw new Error(projectsData.error || window.i18n.t('step2.projectsError'));
       if (!teamsRes.ok) throw new Error(teamsData.error || window.i18n.t('step2.teamsError'));
 
       state.projects = projectsData.projects || [];
@@ -292,7 +296,9 @@
   function renderProjectsList() {
     const query = inputProjectSearch.value.trim().toLowerCase();
     const filtered = state.projects.filter(
-      p => p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)),
+      p =>
+        p.name.toLowerCase().includes(query) ||
+        (p.description && p.description.toLowerCase().includes(query)),
     );
 
     if (filtered.length === 0) {
@@ -374,8 +380,12 @@
     try {
       const selectedProjectIds = Array.from(state.selectedProjectIds).join(',');
       const [colsRes, statesRes, wUsersRes, lUsersRes] = await Promise.all([
-        fetch(`/api/weeek/board-columns?token=${encodeURIComponent(state.weeekToken)}${selectedProjectIds ? `&projectIds=${encodeURIComponent(selectedProjectIds)}` : ''}`),
-        fetch(`/api/linear/states?token=${encodeURIComponent(state.linearToken)}&teamId=${state.selectedTeamId || state.selectedTeamKey}`),
+        fetch(
+          `/api/weeek/board-columns?token=${encodeURIComponent(state.weeekToken)}${selectedProjectIds ? `&projectIds=${encodeURIComponent(selectedProjectIds)}` : ''}`,
+        ),
+        fetch(
+          `/api/linear/states?token=${encodeURIComponent(state.linearToken)}&teamId=${state.selectedTeamId || state.selectedTeamKey}`,
+        ),
         fetch(`/api/weeek/users?token=${encodeURIComponent(state.weeekToken)}`),
         fetch(`/api/linear/users?token=${encodeURIComponent(state.linearToken)}`),
       ]);
@@ -405,28 +415,58 @@
     if (!states || states.length === 0) return '';
     const lower = colName.toLowerCase().trim();
 
-    if (lower.includes('закрыт') || lower.includes('done') || lower.includes('завершен') || lower.includes('готов')) {
+    if (
+      lower.includes('закрыт') ||
+      lower.includes('done') ||
+      lower.includes('завершен') ||
+      lower.includes('готов')
+    ) {
       const s = states.find(st => st.type.toLowerCase() === 'completed');
       if (s) return s.id;
     }
     if (lower.includes('архив') || lower.includes('отмен') || lower.includes('cancel')) {
-      const s = states.find(st => st.type.toLowerCase() === 'canceled') || states.find(st => st.type.toLowerCase() === 'completed');
+      const s =
+        states.find(st => st.type.toLowerCase() === 'canceled') ||
+        states.find(st => st.type.toLowerCase() === 'completed');
       if (s) return s.id;
     }
-    if (lower.includes('тест') || lower.includes('qa') || lower.includes('ревью') || lower.includes('review')) {
-      const s = states.find(st => st.name.toLowerCase().includes('review') || st.name.toLowerCase().includes('qa')) || states.find(st => st.type.toLowerCase() === 'started');
+    if (
+      lower.includes('тест') ||
+      lower.includes('qa') ||
+      lower.includes('ревью') ||
+      lower.includes('review')
+    ) {
+      const s =
+        states.find(
+          st => st.name.toLowerCase().includes('review') || st.name.toLowerCase().includes('qa'),
+        ) || states.find(st => st.type.toLowerCase() === 'started');
       if (s) return s.id;
     }
-    if (lower.includes('в работ') || lower.includes('в процесс') || lower.includes('доработ') || lower.includes('in progress') || lower.includes('doing')) {
+    if (
+      lower.includes('в работ') ||
+      lower.includes('в процесс') ||
+      lower.includes('доработ') ||
+      lower.includes('in progress') ||
+      lower.includes('doing')
+    ) {
       const s = states.find(st => st.type.toLowerCase() === 'started');
       if (s) return s.id;
     }
-    if (lower.includes('план') || lower.includes('запланирован') || lower.includes('todo') || lower.includes('не начато')) {
-      const s = states.find(st => st.type.toLowerCase() === 'unstarted') || states.find(st => st.type.toLowerCase() === 'backlog');
+    if (
+      lower.includes('план') ||
+      lower.includes('запланирован') ||
+      lower.includes('todo') ||
+      lower.includes('не начато')
+    ) {
+      const s =
+        states.find(st => st.type.toLowerCase() === 'unstarted') ||
+        states.find(st => st.type.toLowerCase() === 'backlog');
       if (s) return s.id;
     }
     if (lower.includes('важн') || lower.includes('бэклог') || lower.includes('backlog')) {
-      const s = states.find(st => st.type.toLowerCase() === 'backlog') || states.find(st => st.type.toLowerCase() === 'unstarted');
+      const s =
+        states.find(st => st.type.toLowerCase() === 'backlog') ||
+        states.find(st => st.type.toLowerCase() === 'unstarted');
       if (s) return s.id;
     }
 
@@ -487,7 +527,7 @@
         </div>
       `;
 
-      item.querySelector('.col-select').addEventListener('change', (e) => {
+      item.querySelector('.col-select').addEventListener('change', e => {
         state.boardColumnMapping[col.id] = e.target.value;
       });
 
@@ -554,7 +594,7 @@
         </div>
       `;
 
-      item.querySelector('.user-select').addEventListener('change', (e) => {
+      item.querySelector('.user-select').addEventListener('change', e => {
         state.userMapping[wUser.id] = e.target.value;
       });
 
@@ -599,14 +639,24 @@
   });
 
   // Step 4: Migration Execution & SSE Stream
+  const MAX_LOG_ENTRIES = 500;
+
   function appendLog(message, type = 'info') {
-    const time = new Date().toLocaleTimeString('ru-RU');
+    const locale =
+      typeof window.i18n !== 'undefined' && window.i18n.getLocale() === 'en' ? 'en-US' : 'ru-RU';
+    const time = new Date().toLocaleTimeString(locale);
     const logLine = document.createElement('div');
     logLine.className = `log-line log-${type}`;
     logLine.innerHTML = `
       <span class="log-time">${time}</span>
       <span class="log-text">${escapeHtml(message)}</span>
     `;
+
+    // Защита от DOM Bloat и утечки памяти: удерживаем не более MAX_LOG_ENTRIES элементов
+    while (liveConsoleLogs.children.length >= MAX_LOG_ENTRIES) {
+      liveConsoleLogs.removeChild(liveConsoleLogs.firstElementChild);
+    }
+
     liveConsoleLogs.appendChild(logLine);
 
     if (chkAutoScroll.checked) {
@@ -620,7 +670,15 @@
 
   async function startMigration() {
     state.isMigrationRunning = true;
-    state.counters = { projects: 0, tasks: 0, labels: 0, docs: 0, warnings: 0, errors: 0 };
+    state.counters = {
+      projects: 0,
+      tasks: 0,
+      labels: 0,
+      comments: 0,
+      docs: 0,
+      warnings: 0,
+      errors: 0,
+    };
     updateCounters();
 
     btnStopMigration.disabled = false;
@@ -646,12 +704,16 @@
       }
     };
 
-    const selectedSyncStrategy = document.querySelector('input[name="syncStrategy"]:checked')?.value || 'skip';
-    let selectedCommentStrategy = document.querySelector('input[name="commentStrategy"]:checked')?.value || 'none';
+    const selectedSyncStrategy =
+      document.querySelector('input[name="syncStrategy"]:checked')?.value || 'skip';
+    let selectedCommentStrategy =
+      document.querySelector('input[name="commentStrategy"]:checked')?.value || 'none';
     if (selectedSyncStrategy === 'update_comments_only' && selectedCommentStrategy === 'none') {
       selectedCommentStrategy = 'text_only';
     }
-    const selectedCustomFieldsStrategy = document.querySelector('input[name="customFieldsStrategy"]:checked')?.value || 'append_to_description';
+    const selectedCustomFieldsStrategy =
+      document.querySelector('input[name="customFieldsStrategy"]:checked')?.value ||
+      'append_to_description';
     const ignoredCustomFieldsRaw = document.getElementById('ignoredCustomFieldsInput')?.value || '';
     const ignoredCustomFields = ignoredCustomFieldsRaw
       .split(',')
@@ -676,7 +738,8 @@
       commentStrategy: selectedCommentStrategy,
       customFieldsStrategy: selectedCustomFieldsStrategy,
       ignoredCustomFields: ignoredCustomFields.length > 0 ? ignoredCustomFields : undefined,
-      weeekProjectId: state.selectedProjectIds.size === 1 ? Array.from(state.selectedProjectIds)[0] : undefined,
+      weeekProjectId:
+        state.selectedProjectIds.size === 1 ? Array.from(state.selectedProjectIds)[0] : undefined,
     };
 
     try {
@@ -701,7 +764,10 @@
     if (data.type === 'stage') {
       liveStageBadge.textContent = `${window.i18n.t('step4.stagePrefix')}${data.stageNumber || 1}`;
       liveStageName.textContent = data.stageName;
-      appendLog(`[${window.i18n.t('step4.stagePrefix').toUpperCase()}${data.stageNumber || 1}] ${data.stageName}`, 'stage');
+      appendLog(
+        `[${window.i18n.t('step4.stagePrefix').toUpperCase()}${data.stageNumber || 1}] ${data.stageName}`,
+        'stage',
+      );
     } else if (data.type === 'progress') {
       const current = data.current || 0;
       const total = data.total || 1;
@@ -713,6 +779,7 @@
       if (data.progressType === 'projects') state.counters.projects = current;
       if (data.progressType === 'tasks') state.counters.tasks = current;
       if (data.progressType === 'labels') state.counters.labels = current;
+      if (data.progressType === 'comments') state.counters.comments = current;
       if (data.progressType === 'documents') state.counters.docs = current;
       updateCounters();
     } else if (data.type === 'warning') {
@@ -747,6 +814,7 @@
     cntProjects.textContent = state.counters.projects;
     cntTasks.textContent = state.counters.tasks;
     cntLabels.textContent = state.counters.labels;
+    if (cntComments) cntComments.textContent = state.counters.comments;
     cntDocs.textContent = state.counters.docs;
     cntWarnings.textContent = state.counters.warnings;
     cntErrors.textContent = state.counters.errors;
@@ -802,6 +870,10 @@
             <span class="counter-label">${window.i18n.t('step5.createdLabels')}</span>
           </div>
           <div class="counter-card">
+            <span class="counter-num counter-primary">${summary.comments?.created || 0}</span>
+            <span class="counter-label">${window.i18n.t('step5.createdComments')}</span>
+          </div>
+          <div class="counter-card">
             <span class="counter-num counter-primary">${summary.documents?.created || 0}</span>
             <span class="counter-label">${window.i18n.t('step5.createdDocs')}</span>
           </div>
@@ -827,7 +899,10 @@
   function renderMappingTable(tasksMap) {
     const query = inputMappingSearch.value.trim().toLowerCase();
     const entries = Object.entries(tasksMap).filter(
-      ([wId, t]) => wId.includes(query) || (t.title && t.title.toLowerCase().includes(query)) || (t.linearIssueKey && t.linearIssueKey.toLowerCase().includes(query)),
+      ([wId, t]) =>
+        wId.includes(query) ||
+        (t.title && t.title.toLowerCase().includes(query)) ||
+        (t.linearIssueKey && t.linearIssueKey.toLowerCase().includes(query)),
     );
 
     if (entries.length === 0) {

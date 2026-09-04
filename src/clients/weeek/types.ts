@@ -84,6 +84,7 @@ export interface WeeekTasksResponse {
 export interface WeeekComment {
   id: string;
   taskId?: string | null;
+  parentId?: string | null;
   text: string;
   authorId?: string | null;
   author?: {
@@ -92,4 +93,15 @@ export interface WeeekComment {
     email?: string | null;
   } | null;
   createdAt?: string | null;
+}
+
+export interface CreateWeeekCommentInput {
+  markdown: string;
+  parentId?: number | string | null;
+}
+
+export interface WeeekCommentsResponse {
+  comments: WeeekComment[];
+  hasMore: boolean;
+  total?: number;
 }

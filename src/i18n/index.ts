@@ -25,8 +25,7 @@ export function detectLocale(): Locale {
   if (envLang === 'ru' || envLang === 'en') return envLang;
 
   // 3. Системная переменная LANG/LC_ALL/LANGUAGE
-  const sysLang =
-    process.env['LANG'] ?? process.env['LC_ALL'] ?? process.env['LANGUAGE'] ?? '';
+  const sysLang = process.env['LANG'] ?? process.env['LC_ALL'] ?? process.env['LANGUAGE'] ?? '';
   if (sysLang.toLowerCase().startsWith('ru')) return 'ru';
 
   // 4. По умолчанию — русский (целевая аудитория)

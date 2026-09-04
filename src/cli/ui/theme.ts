@@ -10,7 +10,7 @@ export const theme = {
   secondary: chalk.hex('#8A99AD'),
   success: chalk.hex('#4EBA6F'), // Emerald Green
   warning: chalk.hex('#F2994A'), // Amber Orange
-  error: chalk.hex('#EB5757'),   // Coral Red
+  error: chalk.hex('#EB5757'), // Coral Red
   dim: chalk.hex('#6E7681'),
   bold: chalk.bold,
   title: chalk.bold.hex('#F4F5F8'),
@@ -38,15 +38,9 @@ export function printBanner(): void {
     theme.primary('  ██║ █╗ ██║█████╗  █████╗  █████╗  █████╔╝    ') +
       theme.dim('Safe • Idempotent • Production-ready'),
   );
-  console.info(
-    theme.primary('  ██║███╗██║██╔══╝  ██╔══╝  ██╔══╝  ██╔═██╗    '),
-  );
-  console.info(
-    theme.primary('  ╚███╔███╔╝███████╗███████╗███████╗██║  ██╗   '),
-  );
-  console.info(
-    theme.primary('   ╚══╝╚══╝ ╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝   '),
-  );
+  console.info(theme.primary('  ██║███╗██║██╔══╝  ██╔══╝  ██╔══╝  ██╔═██╗    '));
+  console.info(theme.primary('  ╚███╔███╔╝███████╗███████╗███████╗██║  ██╗   '));
+  console.info(theme.primary('   ╚══╝╚══╝ ╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝   '));
   console.info('');
 }
 

@@ -10,11 +10,7 @@ import { t, tf } from '../../i18n/index.js';
  */
 function openBrowser(url: string): void {
   const start =
-    process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'win32'
-        ? 'start'
-        : 'xdg-open';
+    process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
 
   exec(`${start} ${url}`, err => {
     if (err) {
@@ -23,7 +19,10 @@ function openBrowser(url: string): void {
   });
 }
 
-export async function uiCommand(options: { port?: string | number; open?: boolean }): Promise<void> {
+export async function uiCommand(options: {
+  port?: string | number;
+  open?: boolean;
+}): Promise<void> {
   printBanner();
   p.intro(theme.title(t('cli.ui.intro')));
 

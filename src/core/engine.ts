@@ -4,27 +4,48 @@ import { StateManager } from './state.js';
 import { PreflightValidator } from './validator.js';
 import { RelationshipResolver } from './resolver.js';
 import { ReportGenerator } from './reporter.js';
-import {
-  mapProject,
-  mapTask,
-  guessWorkflowStateType,
-  type MappingContext,
-} from './mapper.js';
+import { mapProject, mapTask, guessWorkflowStateType, type MappingContext } from './mapper.js';
 import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
-import { t, tf } from '../i18n/index.js';
+import { t, tf, getLocale } from '../i18n/index.js';
 import type {
   MigrationOptions,
   MigrationSummary,
   PreflightValidationResult,
+  CommentStrategy,
 } from './types.js';
-import type { WeeekTask, WeeekDocument, WeeekBoardColumn } from '../clients/weeek/types.js';
+import type {
+  WeeekTask,
+  WeeekDocument,
+  WeeekBoardColumn,
+  WeeekComment,
+  WeeekUser,
+} from '../clients/weeek/types.js';
+import type { LinearUser } from '../clients/linear/types.js';
 
 export interface MigrationEngineHooks {
   onStage?: (stageNumber: number, stageName: string) => void;
-  onProgress?: (type: 'projects' | 'labels' | 'tasks' | 'documents', current: number, total: number, itemName?: string) => void;
+  onProgress?: (
+    type: 'projects' | 'labels' | 'tasks' | 'documents' | 'comments',
+    current: number,
+    total: number,
+    itemName?: string,
+  ) => void;
   onWarning?: (message: string) => void;
-  onError?: (error: { entityType: 'project' | 'task' | 'label' | 'relation' | 'auth' | 'document' | 'watcher' | 'state' | 'comment'; entityId: string; message: string }) => void;
+  onError?: (error: {
+    entityType:
+      | 'project'
+      | 'task'
+      | 'label'
+      | 'relation'
+      | 'auth'
+      | 'document'
+      | 'watcher'
+      | 'state'
+      | 'comment';
+    entityId: string;
+    message: string;
+  }) => void;
 }
 
 export class MigrationEngine {
@@ -78,7 +99,15 @@ export class MigrationEngine {
       finishedAt: '',
       durationSeconds: 0,
       projects: { total: 0, created: 0, skipped: 0, failed: 0 },
-      tasks: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0, parentsResolved: 0, parentsFailed: 0 },
+      tasks: {
+        total: 0,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        failed: 0,
+        parentsResolved: 0,
+        parentsFailed: 0,
+      },
       labels: { total: 0, created: 0, reused: 0 },
       documents: { total: 0, created: 0, skipped: 0, failed: 0 },
       warnings: [],
@@ -139,9 +168,7 @@ export class MigrationEngine {
     // Сохранение маппинга найденных пользователей
     for (const wUser of weeekUsers) {
       if (wUser.email) {
-        const matched = linearUsers.find(
-          u => u.email.toLowerCase() === wUser.email.toLowerCase(),
-        );
+        const matched = linearUsers.find(u => u.email.toLowerCase() === wUser.email.toLowerCase());
         if (matched) {
           this.stateManager.recordUser(wUser.email, matched.id, matched.name);
           this.stateManager.recordUser(wUser.id, matched.id, matched.name);
@@ -179,7 +206,9 @@ export class MigrationEngine {
     if (options.dryRun) {
       this.hooks.onStage?.(5, t('engine.stages.preflight'));
       for (const wTag of weeekTags) {
-        const found = existingLinearLabels.some(l => l.name.toLowerCase() === wTag.title.toLowerCase());
+        const found = existingLinearLabels.some(
+          l => l.name.toLowerCase() === wTag.title.toLowerCase(),
+        );
         if (found) summary.labels.reused++;
         else summary.labels.created++;
       }
@@ -244,7 +273,8 @@ export class MigrationEngine {
     // Внимание: В публичном API WEEEK отсутствуют общедоступные эндпоинты для получения документов,
     // поэтому опция переноса документов временно заблокирована.
     if (options.includeDocuments) {
-      const warnMsg = 'Перенос документов базы знаний недоступен: в публичном API WEEEK отсутствует эндпоинт для работы с документами.';
+      const warnMsg =
+        'Перенос документов базы знаний недоступен: в публичном API WEEEK отсутствует эндпоинт для работы с документами.';
       logger.warn(warnMsg);
       this.hooks.onWarning?.(warnMsg);
     }
@@ -298,7 +328,9 @@ export class MigrationEngine {
     }
 
     // Создание, переименование или полное пересоздание Workflow состояний (статусов) в Linear
-    const activeBoardColumnMapping: Record<string, string> = { ...(options.boardColumnMapping || {}) };
+    const activeBoardColumnMapping: Record<string, string> = {
+      ...(options.boardColumnMapping || {}),
+    };
 
     if (!options.dryRun) {
       // 1. Режим полной замены структуры колонок (recreateAllColumns)
@@ -347,7 +379,10 @@ export class MigrationEngine {
         }
       } else {
         // 2. Обычный режим / создание недостающих статусов
-        if (options.createMissingStates || Object.values(activeBoardColumnMapping).includes('__create_new__')) {
+        if (
+          options.createMissingStates ||
+          Object.values(activeBoardColumnMapping).includes('__create_new__')
+        ) {
           for (const col of allWeeekColumns) {
             const explicitVal = activeBoardColumnMapping[col.id];
             const shouldCreate =
@@ -374,9 +409,18 @@ export class MigrationEngine {
                   workflowStates.push(createdState);
                   activeBoardColumnMapping[col.id] = createdState.id;
                   this.stateManager.recordBoardColumn(col.id, createdState.id, createdState.name);
-                  logger.info(tf('logs.engine.stateCreatedNew', createdState.name, createdState.type, col.name));
+                  logger.info(
+                    tf(
+                      'logs.engine.stateCreatedNew',
+                      createdState.name,
+                      createdState.type,
+                      col.name,
+                    ),
+                  );
                 } catch (err) {
-                  logger.warn(tf('logs.engine.stateCreateNewError', col.name, (err as Error).message));
+                  logger.warn(
+                    tf('logs.engine.stateCreateNewError', col.name, (err as Error).message),
+                  );
                   const errorRecord = {
                     entityType: 'state' as const,
                     entityId: col.id,
@@ -406,7 +450,9 @@ export class MigrationEngine {
                   targetState.name = updatedState.name;
                   logger.info(tf('logs.engine.stateRenamed', targetState.name, col.name.trim()));
                 } catch (err) {
-                  logger.warn(tf('logs.engine.stateRenameError', mappedStateId, (err as Error).message));
+                  logger.warn(
+                    tf('logs.engine.stateRenameError', mappedStateId, (err as Error).message),
+                  );
                 }
               }
             }
@@ -417,7 +463,8 @@ export class MigrationEngine {
 
     // 14-16. Разрешение иерархии и перенос задач
     this.hooks.onStage?.(9, t('engine.stages.resolvingHierarchy'));
-    const { rootTasks, nestedTasksByLevel } = RelationshipResolver.groupTasksByHierarchy(allWeeekTasks);
+    const { rootTasks, nestedTasksByLevel } =
+      RelationshipResolver.groupTasksByHierarchy(allWeeekTasks);
 
     const mappingContext: MappingContext = {
       teamId: targetTeam.id,
@@ -557,13 +604,175 @@ export class MigrationEngine {
     }
 
     // 16. Перенос комментариев к задачам (если включена опция)
-    // Внимание: В публичном API WEEEK отсутствуют эндпоинты для работы с комментариями к задачам,
-    // поэтому перенос комментариев недоступен.
-    const commentStrategy = options.commentStrategy || 'none';
+    const commentStrategy: CommentStrategy =
+      options.commentStrategy && options.commentStrategy !== 'none'
+        ? options.commentStrategy
+        : options.syncStrategy === 'update_comments_only'
+          ? 'text_only'
+          : options.commentStrategy || 'none';
+
     if (commentStrategy !== 'none') {
-      const warnMsg = 'Перенос комментариев недоступен: в публичном API WEEEK отсутствует REST-эндпоинт комментариев к задачам.';
-      logger.warn(warnMsg);
-      this.hooks.onWarning?.(warnMsg);
+      this.hooks.onStage?.(12, t('engine.stages.migratingComments'));
+      summary.comments = {
+        total: 0,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+      };
+
+      const weeekUserMap = new Map<string, WeeekUser>();
+      for (const u of weeekUsers) {
+        if (u.id) weeekUserMap.set(String(u.id), u);
+        if (u.email) weeekUserMap.set(u.email.toLowerCase(), u);
+      }
+
+      const linearUserMap = new Map<string, LinearUser>();
+      for (const u of linearUsers) {
+        if (u.id) linearUserMap.set(String(u.id), u);
+        if (u.email) linearUserMap.set(u.email.toLowerCase(), u);
+      }
+
+      const resolveCommentAuthor = (
+        comment: WeeekComment,
+      ): { authorName: string; createAsUser?: string } => {
+        let authorName = comment.author?.name?.trim();
+        const authorEmail = comment.author?.email?.trim().toLowerCase();
+        const authorId = comment.authorId || comment.author?.id;
+
+        if (!authorName && authorId) {
+          const wUser = weeekUserMap.get(String(authorId));
+          if (wUser?.name) authorName = wUser.name.trim();
+        }
+        if (!authorName && authorEmail) {
+          const wUser = weeekUserMap.get(authorEmail);
+          if (wUser?.name) authorName = wUser.name.trim();
+        }
+
+        if (!authorName) {
+          authorName = authorEmail || (authorId ? `WEEEK User #${authorId}` : 'WEEEK User');
+        }
+
+        if (commentStrategy === 'mapped_authors') {
+          let targetLinearUserId: string | undefined;
+          if (authorId && options.userMapping?.[String(authorId)]) {
+            const mappedVal = options.userMapping[String(authorId)];
+            if (mappedVal && mappedVal !== 'unassigned' && mappedVal !== 'skip') {
+              targetLinearUserId = mappedVal;
+            }
+          }
+          if (!targetLinearUserId && authorEmail) {
+            const lUser = linearUserMap.get(authorEmail);
+            if (lUser) targetLinearUserId = lUser.id;
+          }
+
+          if (targetLinearUserId) {
+            const linearUser = linearUserMap.get(targetLinearUserId);
+            const displayAuthorName = linearUser?.name || authorName;
+            return { authorName: displayAuthorName, createAsUser: displayAuthorName };
+          }
+
+          return { authorName, createAsUser: authorName };
+        }
+
+        return { authorName };
+      };
+
+      const formatCommentBody = (
+        comment: WeeekComment,
+        authorName: string,
+        strategy: CommentStrategy,
+      ): string => {
+        const dateStr = comment.createdAt
+          ? new Date(comment.createdAt).toLocaleString(getLocale() === 'ru' ? 'ru-RU' : 'en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : null;
+
+        const rawText = comment.text.trim();
+
+        if (strategy === 'text_only') {
+          const header = dateStr
+            ? `> 💬 **${authorName}** _(${dateStr})_:`
+            : `> 💬 **${authorName}**:`;
+          return `${header}\n\n${rawText}`;
+        } else {
+          if (dateStr) {
+            return `> _(WEEEK • ${dateStr})_\n\n${rawText}`;
+          }
+          return rawText;
+        }
+      };
+
+      const tasksWithIssues = allWeeekTasks.filter(task =>
+        Boolean(this.stateManager.getLinearTaskId(task.id)),
+      );
+
+      let processedCommentsCount = 0;
+
+      for (const task of tasksWithIssues) {
+        const linearIssueId = this.stateManager.getLinearTaskId(task.id);
+        if (!linearIssueId) continue;
+
+        try {
+          const taskComments = await this.weeekClient.getTaskComments(task.id);
+          if (taskComments.length === 0) continue;
+
+          summary.comments.total += taskComments.length;
+
+          for (const comment of taskComments) {
+            processedCommentsCount++;
+            this.hooks.onProgress?.(
+              'comments',
+              processedCommentsCount,
+              summary.comments.total,
+              task.title,
+            );
+
+            if (this.stateManager.isCommentMigrated(comment.id)) {
+              summary.comments.skipped++;
+              continue;
+            }
+
+            if (options.dryRun) {
+              summary.comments.created++;
+              continue;
+            }
+
+            try {
+              const { authorName, createAsUser } = resolveCommentAuthor(comment);
+              const body = formatCommentBody(comment, authorName, commentStrategy);
+
+              const createdLinearComment = await this.linearClient.createComment({
+                issueId: linearIssueId,
+                body,
+                createAsUser,
+              });
+
+              this.stateManager.recordComment(comment.id, createdLinearComment.id, task.id);
+              summary.comments.created++;
+            } catch (commentErr) {
+              summary.comments.failed++;
+              const errorRecord = {
+                entityType: 'comment' as const,
+                entityId: comment.id,
+                message: (commentErr as Error).message,
+                recoverable: true,
+              };
+              summary.errors.push(errorRecord);
+              this.hooks.onError?.(errorRecord);
+            }
+          }
+        } catch (taskCommentsErr) {
+          logger.warn(
+            { taskId: task.id, error: (taskCommentsErr as Error).message },
+            'Не удалось получить комментарии задачи WEEEK',
+          );
+        }
+      }
     }
 
     // 20. Генерация отчетов

@@ -43,8 +43,8 @@ export const en: I18nDictionary = {
       watcherStrategy: 'Subscriber strategy: none | secondary_assignees | global_watcher | both',
       globalWatcher: 'Linear user ID to assign as global watcher for all issues',
       unmatchedUser: 'Action for unmatched users: unassigned | skip | abort',
-      columnMapping: "JSON column mapping string (e.g. '{\"col_1\":\"st_1\"}')",
-      userMapping: "JSON user mapping string (e.g. '{\"usr_w\":\"usr_lin\"}')",
+      columnMapping: 'JSON column mapping string (e.g. \'{"col_1":"st_1"}\')',
+      userMapping: 'JSON user mapping string (e.g. \'{"usr_w":"usr_lin"}\')',
       lang: 'Interface language: ru | en',
       port: 'Server port (default: 3456)',
       noOpen: 'Do not open browser automatically',
@@ -126,6 +126,12 @@ export const en: I18nDictionary = {
       syncUpdateAll: '🔄 Full update (issue fields and comments)',
       syncUpdateStatus: '⚡ Update status and deadline only (without comments)',
       syncUpdateComments: '💬 Update comments only (without modifying issue fields)',
+      commentQuestion: 'Task comments migration strategy:',
+      commentNone: '🚫 Do not migrate comments',
+      commentTextOnly: '💬 Text with author name (Default)',
+      commentMappedAuthors: '👤 Map authors via User Mapping',
+      commentsCreated: 'Comments to create: ',
+      commentsSkipped: 'skipped:',
       resumeConfirm: 'Previous migration found ({count} saved issues). Resume?',
       forceConfirm: 'Reset saved progress and start over (--force)?',
       dryRunComplete: 'DRY RUN COMPLETE — NO CHANGES MADE',
@@ -384,4 +390,3 @@ export const en: I18nDictionary = {
     moreTasksNote: '_... and %d more issues (full list in migration-report.json)_',
   },
 };
-

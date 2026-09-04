@@ -92,9 +92,7 @@ export function normalizeDocumentContentToMarkdown(rawContent: unknown): string 
           const listText = items
             .map((item, idx) => {
               const itemText =
-                typeof item === 'string'
-                  ? item
-                  : (item as { text?: string })?.text || '';
+                typeof item === 'string' ? item : (item as { text?: string })?.text || '';
               return `${style === '1.' ? `${idx + 1}.` : '-'} ${normalizeDescriptionToMarkdown(itemText)}`;
             })
             .join('\n');

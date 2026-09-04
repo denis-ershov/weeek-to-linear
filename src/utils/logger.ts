@@ -161,3 +161,13 @@ export function createLogger(level: string = 'info'): Logger {
 }
 
 export const logger = createLogger(process.env['LOG_LEVEL'] || 'info');
+
+/**
+ * Функция безопасного маскирования секретов в строках
+ */
+export function redactSensitiveData(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/lin_api_[a-zA-Z0-9_-]+/g, '[REDACTED]')
+    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/g, 'Bearer [REDACTED]');
+}

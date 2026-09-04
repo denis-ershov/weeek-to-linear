@@ -13,6 +13,7 @@ import {
   WeeekBoardColumnSchema,
   WeeekDocumentSchema,
   WeeekCommentSchema,
+  WeeekCommentsResponseSchema,
 } from './schemas.js';
 import type {
   WeeekProject,
@@ -23,6 +24,7 @@ import type {
   WeeekBoardColumn,
   WeeekDocument,
   WeeekComment,
+  CreateWeeekCommentInput,
 } from './types.js';
 import { z } from 'zod';
 
@@ -51,10 +53,7 @@ export class WeeekClient {
   /**
    * Базовый метод выполнения авторизованного HTTP-запроса к WEEEK API
    */
-  private async request<T>(
-    endpoint: string,
-    options?: RequestInit,
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     return this.queue.add(() =>
       withRetry(async () => {
         const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -514,64 +513,106 @@ export class WeeekClient {
   }
 
   /**
-   * Получение комментариев к задаче WEEEK
+   * Получение комментариев к задаче WEEEK с автоматической пагинацией (limit & offset)
    */
-  async getTaskComments(taskId: string): Promise<WeeekComment[]> {
-    const endpoints = [
-      `/ws/tm/tasks/${taskId}/comments`,
-      `/tm/tasks/${taskId}/comments`,
-      `/ws/tasks/${taskId}/comments`,
-      `/tasks/${taskId}/comments`,
-      `/tm/comments?task_id=${taskId}`,
-      `/ws/comments?task_id=${taskId}`,
-      `/tm/comments?taskId=${taskId}`,
-      `/ws/comments?taskId=${taskId}`,
-    ];
+  async getTaskComments(
+    taskId: string,
+    options: { limit?: number; maxPages?: number } = {},
+  ): Promise<WeeekComment[]> {
+    const limit = Math.min(Math.max(options.limit ?? 100, 1), 100);
+    let offset = 0;
+    const maxPages = options.maxPages ?? 100;
+    let page = 0;
+    const allComments: WeeekComment[] = [];
+    const seenCommentIds = new Set<string>();
 
-    for (const endpoint of endpoints) {
+    while (page < maxPages) {
+      page++;
+      const endpoint = `/tm/tasks/${taskId}/comments?limit=${limit}&offset=${offset}`;
+
       try {
-        const data = await this.request<unknown>(endpoint);
-        const extractList = (raw: unknown): unknown[] => {
-          if (Array.isArray(raw)) return raw;
-          if (raw && typeof raw === 'object') {
-            const r = raw as Record<string, unknown>;
-            const list = r.comments || r.data || r.items;
-            if (Array.isArray(list)) return list;
-          }
-          return [];
-        };
+        const raw = await this.request<unknown>(endpoint);
+        const parsed = WeeekCommentsResponseSchema.parse(raw);
 
-        const list = extractList(data);
-        if (list.length > 0) {
-          const comments: WeeekComment[] = [];
-          for (const item of list) {
-            try {
-              const parsed = WeeekCommentSchema.parse(item);
-              if (parsed.text) {
-                comments.push({ ...parsed, taskId });
-              }
-            } catch {
-              // Игнорируем некорректные элементы
-            }
-          }
-          if (comments.length > 0) return comments;
+        if (!parsed.comments || parsed.comments.length === 0) {
+          break;
         }
-      } catch {
-        // Пробуем следующий эндпоинт
+
+        let newInPage = 0;
+        for (const comment of parsed.comments) {
+          if (!seenCommentIds.has(comment.id)) {
+            seenCommentIds.add(comment.id);
+            allComments.push({ ...comment, taskId });
+            newInPage++;
+          }
+        }
+
+        if (!parsed.hasMore || newInPage === 0) {
+          break;
+        }
+
+        offset += limit;
+      } catch (err) {
+        logger.debug(
+          { taskId, error: (err as Error).message },
+          'Не удалось загрузить комментарии к задаче WEEEK через официальный эндпоинт',
+        );
+        break;
       }
     }
-    return [];
+
+    return allComments;
+  }
+
+  /**
+   * Создание нового комментария или ответа к задаче WEEEK (поддерживает Markdown)
+   */
+  async createTaskComment(
+    taskId: string | number,
+    input: CreateWeeekCommentInput,
+  ): Promise<WeeekComment> {
+    const body: Record<string, unknown> = {
+      markdown: input.markdown,
+    };
+    if (input.parentId !== undefined && input.parentId !== null) {
+      body.parentId = Number(input.parentId);
+    }
+
+    const res = await this.request<unknown>(`/tm/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    const parsed =
+      res && typeof res === 'object' && 'comment' in res
+        ? WeeekCommentSchema.parse((res as { comment: unknown }).comment)
+        : WeeekCommentSchema.parse(res);
+
+    return { ...parsed, taskId: String(taskId) };
+  }
+
+  /**
+   * Удаление комментария к задаче WEEEK
+   */
+  async deleteTaskComment(taskId: string | number, commentId: string | number): Promise<boolean> {
+    const res = await this.request<{ success?: boolean }>(
+      `/tm/tasks/${taskId}/comments/${commentId}`,
+      { method: 'DELETE' },
+    );
+    return res?.success ?? true;
   }
 
   /**
    * Получение всех задач проекта WEEEK с автоматической обработкой пагинации
    */
-  async getTasks(options: {
-    projectId?: string;
-    includeCompleted?: boolean;
-    includeDeleted?: boolean;
-    perPage?: number;
-  } = {}): Promise<WeeekTask[]> {
+  async getTasks(
+    options: {
+      projectId?: string;
+      includeCompleted?: boolean;
+      includeDeleted?: boolean;
+      perPage?: number;
+    } = {},
+  ): Promise<WeeekTask[]> {
     const allTasks: WeeekTask[] = [];
     const perPage = options.perPage || 100;
     let offset = 0;

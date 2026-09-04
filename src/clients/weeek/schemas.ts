@@ -3,32 +3,81 @@ import { normalizeDocumentContentToMarkdown } from '../../utils/markdown.js';
 
 export const WeeekUserSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  email: z.string().nullish().transform(v => v?.trim() || ''),
-  name: z.string().nullish().transform(v => v?.trim() || '').default(''),
-  avatarUrl: z.string().nullish().transform(v => (v ? String(v) : null)),
+  email: z
+    .string()
+    .nullish()
+    .transform(v => v?.trim() || ''),
+  name: z
+    .string()
+    .nullish()
+    .transform(v => v?.trim() || '')
+    .default(''),
+  avatarUrl: z
+    .string()
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
 });
 
 export const WeeekProjectSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
-  description: z.string().nullish().transform(v => (v ? String(v) : null)),
-  isPrivate: z.union([z.boolean(), z.number()]).nullish().transform(v => Boolean(v)).default(false),
+  name: z
+    .string()
+    .nullish()
+    .transform(val => val?.trim() || '')
+    .default(''),
+  description: z
+    .string()
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
+  isPrivate: z
+    .union([z.boolean(), z.number()])
+    .nullish()
+    .transform(v => Boolean(v))
+    .default(false),
 });
 
 export const WeeekBoardSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
-  projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-  order: z.number().nullish().transform(v => (v !== null && v !== undefined ? v : 0)).default(0),
+  name: z
+    .string()
+    .nullish()
+    .transform(val => val?.trim() || '')
+    .default(''),
+  projectId: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
+  order: z
+    .number()
+    .nullish()
+    .transform(v => (v !== null && v !== undefined ? v : 0))
+    .default(0),
 });
 
 export const WeeekBoardColumnSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().nullish().transform(val => val?.trim() || '').default(''),
-  boardId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-  projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-  order: z.number().nullish().transform(v => (v !== null && v !== undefined ? v : 0)).default(0),
-  color: z.string().nullish().transform(v => (v ? String(v) : null)),
+  name: z
+    .string()
+    .nullish()
+    .transform(val => val?.trim() || '')
+    .default(''),
+  boardId: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
+  projectId: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
+  order: z
+    .number()
+    .nullish()
+    .transform(v => (v !== null && v !== undefined ? v : 0))
+    .default(0),
+  color: z
+    .string()
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
 });
 
 export const WeeekDocumentSchema = z.preprocess(
@@ -37,7 +86,15 @@ export const WeeekDocumentSchema = z.preprocess(
     const obj = val as Record<string, unknown>;
     const id = obj.id ?? obj.uuid ?? obj.articleId ?? obj.documentId ?? obj.doc_id ?? obj._id;
     const title = obj.title ?? obj.name ?? obj.header ?? obj.subject ?? '';
-    const content = obj.content ?? obj.body ?? obj.text ?? obj.description ?? obj.data ?? obj.html ?? obj.blocks ?? '';
+    const content =
+      obj.content ??
+      obj.body ??
+      obj.text ??
+      obj.description ??
+      obj.data ??
+      obj.html ??
+      obj.blocks ??
+      '';
     const projectId = obj.projectId ?? obj.project_id ?? obj.project;
     const parentId = obj.parentId ?? obj.parent_id ?? obj.folderId ?? obj.folder_id;
 
@@ -62,8 +119,14 @@ export const WeeekDocumentSchema = z.preprocess(
       .nullish()
       .transform(v => normalizeDocumentContentToMarkdown(v))
       .default(''),
-    parentId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
+    parentId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    projectId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
     createdAt: z.string().nullish(),
     updatedAt: z.string().nullish(),
   }),
@@ -71,8 +134,15 @@ export const WeeekDocumentSchema = z.preprocess(
 
 export const WeeekTagSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
-  title: z.string().nullish().transform(v => v?.trim() || 'Tag').default('Tag'),
-  color: z.string().nullish().transform(v => (v ? String(v) : null)),
+  title: z
+    .string()
+    .nullish()
+    .transform(v => v?.trim() || 'Tag')
+    .default('Tag'),
+  color: z
+    .string()
+    .nullish()
+    .transform(v => (v ? String(v) : null)),
 });
 
 export const WeeekTaskSchema = z.preprocess(
@@ -89,7 +159,13 @@ export const WeeekTaskSchema = z.preprocess(
           const c = item as Record<string, unknown>;
           return {
             id: String(c.id ?? c.fieldId ?? c.key ?? c.name ?? ''),
-            name: c.name ? String(c.name) : c.title ? String(c.title) : c.id ? String(c.id) : undefined,
+            name: c.name
+              ? String(c.name)
+              : c.title
+                ? String(c.title)
+                : c.id
+                  ? String(c.id)
+                  : undefined,
             type: c.type ? String(c.type) : undefined,
             value: c.value !== undefined ? c.value : c.val !== undefined ? c.val : undefined,
           };
@@ -111,28 +187,89 @@ export const WeeekTaskSchema = z.preprocess(
   },
   z.object({
     id: z.union([z.string(), z.number()]).transform(String),
-    parentId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    projectId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    boardId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    boardColumnId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    columnId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    title: z.string().nullish().transform(val => val?.trim() || 'Untitled task').default('Untitled task'),
-    description: z.string().nullish().transform(v => (v ? String(v) : null)),
-    date: z.union([z.string(), z.number()]).nullish().transform(v => (v !== null && v !== undefined ? String(v) : null)),
-    dateStart: z.union([z.string(), z.number()]).nullish().transform(v => (v !== null && v !== undefined ? String(v) : null)),
-    dateEnd: z.union([z.string(), z.number()]).nullish().transform(v => (v !== null && v !== undefined ? String(v) : null)),
-    timeStart: z.union([z.string(), z.number()]).nullish().transform(v => (v !== null && v !== undefined ? String(v) : null)),
-    timeEnd: z.union([z.string(), z.number()]).nullish().transform(v => (v !== null && v !== undefined ? String(v) : null)),
-    priority: z.union([z.number(), z.string()]).nullish().transform(val => {
-      if (val === null || val === undefined) return 0;
-      const num = Number(val);
-      return isNaN(num) ? 0 : Math.max(0, Math.min(num, 3));
-    }).default(0),
-    isCompleted: z.union([z.boolean(), z.number(), z.string()]).nullish().transform(val => Boolean(val === true || val === 1 || val === '1')).default(false),
-    isDeleted: z.union([z.boolean(), z.number(), z.string()]).nullish().transform(val => Boolean(val === true || val === 1 || val === '1')).default(false),
-    assignees: z.array(z.any()).nullish().transform(val => (Array.isArray(val) ? val : [])).default([]),
-    tags: z.array(z.any()).nullish().transform(val => (Array.isArray(val) ? val : [])).default([]),
-    customFields: z.array(z.any()).nullish().transform(val => (Array.isArray(val) ? val : [])).default([]),
+    parentId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    projectId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    boardId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    boardColumnId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    columnId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    title: z
+      .string()
+      .nullish()
+      .transform(val => val?.trim() || 'Untitled task')
+      .default('Untitled task'),
+    description: z
+      .string()
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    date: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v !== null && v !== undefined ? String(v) : null)),
+    dateStart: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v !== null && v !== undefined ? String(v) : null)),
+    dateEnd: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v !== null && v !== undefined ? String(v) : null)),
+    timeStart: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v !== null && v !== undefined ? String(v) : null)),
+    timeEnd: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v !== null && v !== undefined ? String(v) : null)),
+    priority: z
+      .union([z.number(), z.string()])
+      .nullish()
+      .transform(val => {
+        if (val === null || val === undefined) return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : Math.max(0, Math.min(num, 3));
+      })
+      .default(0),
+    isCompleted: z
+      .union([z.boolean(), z.number(), z.string()])
+      .nullish()
+      .transform(val => Boolean(val === true || val === 1 || val === '1'))
+      .default(false),
+    isDeleted: z
+      .union([z.boolean(), z.number(), z.string()])
+      .nullish()
+      .transform(val => Boolean(val === true || val === 1 || val === '1'))
+      .default(false),
+    assignees: z
+      .array(z.any())
+      .nullish()
+      .transform(val => (Array.isArray(val) ? val : []))
+      .default([]),
+    tags: z
+      .array(z.any())
+      .nullish()
+      .transform(val => (Array.isArray(val) ? val : []))
+      .default([]),
+    customFields: z
+      .array(z.any())
+      .nullish()
+      .transform(val => (Array.isArray(val) ? val : []))
+      .default([]),
   }),
 );
 
@@ -147,9 +284,11 @@ export const WeeekCommentSchema = z.preprocess(
     if (!val || typeof val !== 'object') return val;
     const obj = val as Record<string, unknown>;
     const id = obj.id ?? obj.commentId ?? obj._id;
-    const text = obj.text ?? obj.content ?? obj.body ?? obj.description ?? obj.message ?? '';
+    const text =
+      obj.markdown ?? obj.text ?? obj.content ?? obj.body ?? obj.description ?? obj.message ?? '';
     const taskId = obj.taskId ?? obj.task_id;
     const authorId = obj.authorId ?? obj.author_id ?? obj.userId ?? obj.user_id;
+    const parentId = obj.parentId ?? obj.parent_id;
 
     let author = obj.author ?? obj.user;
     if (typeof author === 'string' || typeof author === 'number') {
@@ -162,21 +301,68 @@ export const WeeekCommentSchema = z.preprocess(
       text: typeof text === 'string' ? text : JSON.stringify(text),
       taskId: taskId !== undefined ? taskId : null,
       authorId: authorId !== undefined ? authorId : null,
+      parentId: parentId !== undefined ? parentId : null,
       author,
     };
   },
   z.object({
     id: z.union([z.string(), z.number()]).transform(String),
-    taskId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-    text: z.string().nullish().transform(v => v?.trim() || '').default(''),
-    authorId: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
+    taskId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    parentId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    text: z
+      .string()
+      .nullish()
+      .transform(v => v?.trim() || '')
+      .default(''),
+    authorId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
     author: z
       .object({
-        id: z.union([z.string(), z.number()]).nullish().transform(v => (v ? String(v) : null)),
-        name: z.string().nullish().transform(v => (v ? String(v) : null)),
-        email: z.string().nullish().transform(v => (v ? String(v) : null)),
+        id: z
+          .union([z.string(), z.number()])
+          .nullish()
+          .transform(v => (v ? String(v) : null)),
+        name: z
+          .string()
+          .nullish()
+          .transform(v => (v ? String(v) : null)),
+        email: z
+          .string()
+          .nullish()
+          .transform(v => (v ? String(v) : null)),
       })
       .nullish(),
     createdAt: z.string().nullish(),
+  }),
+);
+
+export const WeeekCommentsResponseSchema = z.preprocess(
+  (val: unknown) => {
+    if (Array.isArray(val)) {
+      return { comments: val, hasMore: false };
+    }
+    if (val && typeof val === 'object') {
+      const obj = val as Record<string, unknown>;
+      const comments = obj.comments ?? obj.data ?? obj.items ?? [];
+      return {
+        ...obj,
+        comments: Array.isArray(comments) ? comments : [],
+        hasMore: Boolean(obj.hasMore),
+      };
+    }
+    return { comments: [], hasMore: false };
+  },
+  z.object({
+    comments: z.array(WeeekCommentSchema).default([]),
+    hasMore: z.boolean().default(false),
+    total: z.number().optional(),
   }),
 );

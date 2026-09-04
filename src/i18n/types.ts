@@ -137,6 +137,12 @@ export interface I18nDictionary {
       syncUpdateAll: string;
       syncUpdateStatus: string;
       syncUpdateComments: string;
+      commentQuestion: string;
+      commentNone: string;
+      commentTextOnly: string;
+      commentMappedAuthors: string;
+      commentsCreated: string;
+      commentsSkipped: string;
       resumeConfirm: string;
       forceConfirm: string;
       dryRunComplete: string;
@@ -411,4 +417,3 @@ export interface I18nDictionary {
     moreTasksNote: string;
   };
 }
-

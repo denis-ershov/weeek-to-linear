@@ -40,14 +40,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
+      - name: Check code formatting
+        run: pnpm npx prettier --check "src/**/*.{ts,js,json}" "tests/**/*.{ts,js,json}" "docs/**/*.md"
+
       - name: Run linter
         run: pnpm lint
 
       - name: Run typecheck
         run: pnpm typecheck
 
-      - name: Run unit & integration tests
-        run: pnpm test
+      - name: Run unit & integration tests with coverage
+        run: pnpm test:coverage
+
+      - name: Security audit
+        run: pnpm audit --audit-level=high
 
       - name: Build project
         run: pnpm build

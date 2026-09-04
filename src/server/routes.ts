@@ -20,13 +20,23 @@ import type {
 export class SseManager {
   private clients: Set<ServerResponse> = new Set();
 
-  public addClient(res: ServerResponse): void {
-    res.writeHead(200, {
+  public addClient(res: ServerResponse, req?: IncomingMessage): void {
+    const origin = req?.headers.origin;
+    const isAllowedOrigin = !origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+    const headers: Record<string, string> = {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    });
+      'X-Content-Type-Options': 'nosniff',
+    };
+
+    if (origin && isAllowedOrigin) {
+      headers['Access-Control-Allow-Origin'] = origin;
+      headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+
+    res.writeHead(200, headers);
     res.write(': connected\n\n');
     this.clients.add(res);
 
@@ -54,6 +64,7 @@ export class ApiRouter {
   private sseManager: SseManager;
   private currentEngine: MigrationEngine | null = null;
   private isMigrationRunning = false;
+  private currentReq: IncomingMessage | null = null;
 
   constructor(sseManager: SseManager) {
     this.sseManager = sseManager;
@@ -83,25 +94,51 @@ export class ApiRouter {
   }
 
   private sendJson(res: ServerResponse, status: number, data: unknown): void {
-    res.writeHead(status, {
+    const origin = this.currentReq?.headers.origin;
+    const isAllowedOrigin = !origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    });
+      'X-Content-Type-Options': 'nosniff',
+    };
+
+    if (origin && isAllowedOrigin) {
+      headers['Access-Control-Allow-Origin'] = origin;
+      headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+
+    res.writeHead(status, headers);
     res.end(JSON.stringify(data));
   }
 
-  public async handleRequest(req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  public async handleRequest(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+  ): Promise<boolean> {
+    this.currentReq = req;
     const { pathname } = url;
     const method = req.method || 'GET';
 
     if (method === 'OPTIONS') {
-      res.writeHead(204, {
-        'Access-Control-Allow-Origin': '*',
+      const origin = req.headers.origin;
+      const isAllowedOrigin =
+        !origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+      const headers: Record<string, string> = {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      });
+        'X-Content-Type-Options': 'nosniff',
+      };
+
+      if (origin && isAllowedOrigin) {
+        headers['Access-Control-Allow-Origin'] = origin;
+        headers['Access-Control-Allow-Credentials'] = 'true';
+      }
+
+      res.writeHead(204, headers);
       res.end();
       return true;
     }
@@ -196,7 +233,8 @@ export class ApiRouter {
     if (pathname === '/api/weeek/board-columns' && method === 'GET') {
       try {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
-        const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
+        const projectIdParam =
+          url.searchParams.get('projectId') || url.searchParams.get('projectIds');
         if (!token) {
           this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
@@ -206,7 +244,10 @@ export class ApiRouter {
         const seenIds = new Set<string>();
 
         if (projectIdParam && projectIdParam.includes(',')) {
-          const pIds = projectIdParam.split(',').map(s => s.trim()).filter(Boolean);
+          const pIds = projectIdParam
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
           for (const pid of pIds) {
             const cols = await client.getBoardColumns({ projectId: pid });
             for (const c of cols) {
@@ -254,7 +295,8 @@ export class ApiRouter {
     if (pathname === '/api/weeek/documents' && method === 'GET') {
       try {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
-        const projectIdParam = url.searchParams.get('projectId') || url.searchParams.get('projectIds');
+        const projectIdParam =
+          url.searchParams.get('projectId') || url.searchParams.get('projectIds');
         if (!token) {
           this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
@@ -274,7 +316,10 @@ export class ApiRouter {
 
         // 2. Документы выбранных проектов
         if (projectIdParam) {
-          const pIds = projectIdParam.split(',').map(s => s.trim()).filter(Boolean);
+          const pIds = projectIdParam
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
           for (const pid of pIds) {
             const pDocs = await client.getDocuments({ projectId: pid });
             for (const d of pDocs) {
@@ -347,7 +392,7 @@ export class ApiRouter {
 
     // 7. GET /api/migrate/stream (SSE)
     if (pathname === '/api/migrate/stream' && method === 'GET') {
-      this.sseManager.addClient(res);
+      this.sseManager.addClient(res, req);
       return true;
     }
 

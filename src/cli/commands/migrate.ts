@@ -191,7 +191,10 @@ export async function migrateCommand(cliOptions: {
 
     watcherStrategy = watcherChoice as 'none' | 'secondary_assignees' | 'global_watcher' | 'both';
 
-    if ((watcherStrategy === 'global_watcher' || watcherStrategy === 'both') && !globalWatcherUserId) {
+    if (
+      (watcherStrategy === 'global_watcher' || watcherStrategy === 'both') &&
+      !globalWatcherUserId
+    ) {
       const linearUsers = await linearClient.getUsers();
       if (linearUsers.length > 0) {
         const userChoice = await p.select({
@@ -217,11 +220,31 @@ export async function migrateCommand(cliOptions: {
         { value: 'skip', label: t('cli.migrate.syncSkip') },
         { value: 'update_all', label: t('cli.migrate.syncUpdateAll') },
         { value: 'update_status_only', label: t('cli.migrate.syncUpdateStatus') },
+        { value: 'update_comments_only', label: t('cli.migrate.syncUpdateComments') },
       ],
     });
 
     if (!p.isCancel(syncChoice)) {
-      syncStrategy = syncChoice as 'skip' | 'update_all' | 'update_status_only';
+      syncStrategy = syncChoice as
+        'skip' | 'update_all' | 'update_status_only' | 'update_comments_only';
+    }
+  }
+
+  // Интерактивный выбор стратегии переноса комментариев
+  let commentStrategy = cliOptions.commentStrategy;
+  if (!cliOptions.weeekProject && !cliOptions.commentStrategy) {
+    const commentChoice = await p.select({
+      message: t('cli.migrate.commentQuestion'),
+      options: [
+        { value: 'text_only', label: t('cli.migrate.commentTextOnly') },
+        { value: 'mapped_authors', label: t('cli.migrate.commentMappedAuthors') },
+        { value: 'none', label: t('cli.migrate.commentNone') },
+      ],
+      initialValue: 'text_only',
+    });
+
+    if (!p.isCancel(commentChoice)) {
+      commentStrategy = commentChoice as 'none' | 'text_only' | 'mapped_authors';
     }
   }
 
@@ -308,7 +331,7 @@ export async function migrateCommand(cliOptions: {
     userMapping: cliOptions.userMapping,
     includeDeleted: cliOptions.includeDeleted ?? false,
     syncStrategy,
-    commentStrategy: cliOptions.commentStrategy || 'none',
+    commentStrategy: commentStrategy || cliOptions.commentStrategy || 'none',
     customFieldsStrategy: cliOptions.customFieldsStrategy ?? 'append_to_description',
     customFieldsMapping: cliOptions.customFieldsMapping,
     ignoredCustomFields: cliOptions.ignoreCustomFields,
@@ -329,6 +352,9 @@ export async function migrateCommand(cliOptions: {
         `${t('cli.migrate.projCreated')} ${summary.projects.created}\n` +
           `${t('cli.migrate.tasksCreated')} ${summary.tasks.created}\n` +
           `${t('cli.migrate.labelsCreated')} ${summary.labels.created} (${t('cli.migrate.labelsReused')}: ${summary.labels.reused})\n` +
+          (summary.comments
+            ? `${t('cli.migrate.commentsCreated')} ${summary.comments.created}\n`
+            : '') +
           `${t('cli.migrate.warnings')} ${summary.warnings.length}\n` +
           `${t('cli.migrate.errors')} ${summary.errors.length}\n\n` +
           `${t('cli.migrate.reportMd')} ${theme.primary(reportPaths.markdown)}`,
@@ -339,6 +365,9 @@ export async function migrateCommand(cliOptions: {
         `${t('cli.migrate.projCreated')} ${theme.bold(String(summary.projects.created))} (${t('cli.migrate.projSkipped')}: ${summary.projects.skipped})\n` +
           `${t('cli.migrate.tasksCreated')} ${theme.bold(String(summary.tasks.created))} (${t('cli.migrate.tasksSkipped')}: ${summary.tasks.skipped})\n` +
           `${t('cli.migrate.labelsCreated')} ${theme.bold(String(summary.labels.created))} (${t('cli.migrate.labelsReused')}: ${summary.labels.reused})\n` +
+          (summary.comments
+            ? `${t('cli.migrate.commentsCreated')} ${theme.bold(String(summary.comments.created))} (${t('cli.migrate.commentsSkipped')}: ${summary.comments.skipped})\n`
+            : '') +
           `${t('cli.migrate.parentsResolved')} ${theme.bold(String(summary.tasks.parentsResolved))}\n` +
           `${t('cli.migrate.errors')} ${summary.errors.length === 0 ? theme.success('0') : theme.error(String(summary.errors.length))}\n\n` +
           `${t('cli.migrate.reportSaved')}\n` +

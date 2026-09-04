@@ -49,15 +49,25 @@ describe('core/mapper', () => {
 
     // Явный маппинг
     const mapping = { col_123: 'st_review' };
-    expect(mapBoardColumnToWorkflowState('col_123', 'Любое имя', mapping, states)).toBe('st_review');
+    expect(mapBoardColumnToWorkflowState('col_123', 'Любое имя', mapping, states)).toBe(
+      'st_review',
+    );
 
     // Эвристика по названиям колонок
-    expect(mapBoardColumnToWorkflowState(null, '👾 В работе', undefined, states)).toBe('st_started');
-    expect(mapBoardColumnToWorkflowState(null, '❓ Тестирование', undefined, states)).toBe('st_review');
-    expect(mapBoardColumnToWorkflowState(null, '‼️ Закрыто', undefined, states)).toBe('st_completed');
+    expect(mapBoardColumnToWorkflowState(null, '👾 В работе', undefined, states)).toBe(
+      'st_started',
+    );
+    expect(mapBoardColumnToWorkflowState(null, '❓ Тестирование', undefined, states)).toBe(
+      'st_review',
+    );
+    expect(mapBoardColumnToWorkflowState(null, '‼️ Закрыто', undefined, states)).toBe(
+      'st_completed',
+    );
     expect(mapBoardColumnToWorkflowState(null, '📁 Архив', undefined, states)).toBe('st_canceled');
     expect(mapBoardColumnToWorkflowState(null, '💡 Важное', undefined, states)).toBe('st_backlog');
-    expect(mapBoardColumnToWorkflowState(null, '⏱ Запланировано', undefined, states)).toBe('st_unstarted');
+    expect(mapBoardColumnToWorkflowState(null, '⏱ Запланировано', undefined, states)).toBe(
+      'st_unstarted',
+    );
   });
 
   it('guessWorkflowStateType должен определять правильный базовый тип Linear статуса', () => {
@@ -127,7 +137,14 @@ describe('core/mapper', () => {
 
     // 3. Secondary Assignees (Alex становится наблюдателем, Denis - основной)
     expect(
-      resolveSubscribers(assignees, linearUsers, undefined, 'secondary_assignees', undefined, 'usr_1'),
+      resolveSubscribers(
+        assignees,
+        linearUsers,
+        undefined,
+        'secondary_assignees',
+        undefined,
+        'usr_1',
+      ),
     ).toEqual(['usr_2']);
 
     // 4. Both (Alex + Lead)
@@ -158,8 +175,11 @@ describe('core/mapper', () => {
         { id: 'usr_2', name: 'Alex', email: 'alex@example.com' },
         { id: 'usr_lead', name: 'Lead', email: 'lead@example.com' },
       ],
-      linearLabelsByName: new Map([['bug', 'lbl_bug'], ['hold', 'lbl_hold']]),
-      tasksStateMap: { 'parent_10': { linearIssueId: 'lin_parent_10' } },
+      linearLabelsByName: new Map([
+        ['bug', 'lbl_bug'],
+        ['hold', 'lbl_hold'],
+      ]),
+      tasksStateMap: { parent_10: { linearIssueId: 'lin_parent_10' } },
       boardColumnMapping: { col_progress: 'st_started' },
       watcherStrategy: 'both',
       globalWatcherUserId: 'usr_lead',
@@ -202,7 +222,7 @@ describe('core/mapper', () => {
       linearLabelsByName: new Map(),
       tasksStateMap: {},
       customFieldsStrategy: 'append_to_description',
-      customFieldsMapping: { 'f_budget': 'Бюджет проекта', 'f_secret': 'skip' },
+      customFieldsMapping: { f_budget: 'Бюджет проекта', f_secret: 'skip' },
       ignoredCustomFields: ['f_ignore'],
     };
 

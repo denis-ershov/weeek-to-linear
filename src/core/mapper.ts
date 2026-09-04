@@ -1,4 +1,9 @@
-import type { WeeekPriority, LinearPriority, WatcherStrategy, CustomFieldsStrategy } from './types.js';
+import type {
+  WeeekPriority,
+  LinearPriority,
+  WatcherStrategy,
+  CustomFieldsStrategy,
+} from './types.js';
 import type { WeeekTask, WeeekProject, WeeekCustomField } from '../clients/weeek/types.js';
 import type {
   LinearWorkflowState,
@@ -79,11 +84,7 @@ export function guessWorkflowStateType(
     return 'completed';
   }
 
-  if (
-    lower.includes('архив') ||
-    lower.includes('отмен') ||
-    lower.includes('cancel')
-  ) {
+  if (lower.includes('архив') || lower.includes('отмен') || lower.includes('cancel')) {
     return 'canceled';
   }
 
@@ -101,11 +102,7 @@ export function guessWorkflowStateType(
     return 'started';
   }
 
-  if (
-    lower.includes('важн') ||
-    lower.includes('бэклог') ||
-    lower.includes('backlog')
-  ) {
+  if (lower.includes('важн') || lower.includes('бэклог') || lower.includes('backlog')) {
     return 'backlog';
   }
 
@@ -135,7 +132,12 @@ export function mapBoardColumnToWorkflowState(
     const lower = boardColumnTitle.toLowerCase().trim();
 
     // Завершенные / Архив
-    if (lower.includes('закрыт') || lower.includes('done') || lower.includes('завершен') || lower.includes('готов')) {
+    if (
+      lower.includes('закрыт') ||
+      lower.includes('done') ||
+      lower.includes('завершен') ||
+      lower.includes('готов')
+    ) {
       const state = workflowStates.find(s => s.type.toLowerCase() === 'completed');
       if (state) return state.id;
     }
@@ -148,20 +150,37 @@ export function mapBoardColumnToWorkflowState(
     }
 
     // В работе / Тестирование / Доработка
-    if (lower.includes('тест') || lower.includes('qa') || lower.includes('ревью') || lower.includes('review')) {
+    if (
+      lower.includes('тест') ||
+      lower.includes('qa') ||
+      lower.includes('ревью') ||
+      lower.includes('review')
+    ) {
       const state =
-        workflowStates.find(s => s.name.toLowerCase().includes('review') || s.name.toLowerCase().includes('qa')) ||
-        workflowStates.find(s => s.type.toLowerCase() === 'started');
+        workflowStates.find(
+          s => s.name.toLowerCase().includes('review') || s.name.toLowerCase().includes('qa'),
+        ) || workflowStates.find(s => s.type.toLowerCase() === 'started');
       if (state) return state.id;
     }
 
-    if (lower.includes('в работ') || lower.includes('в процесс') || lower.includes('доработ') || lower.includes('in progress') || lower.includes('doing')) {
+    if (
+      lower.includes('в работ') ||
+      lower.includes('в процесс') ||
+      lower.includes('доработ') ||
+      lower.includes('in progress') ||
+      lower.includes('doing')
+    ) {
       const state = workflowStates.find(s => s.type.toLowerCase() === 'started');
       if (state) return state.id;
     }
 
     // Запланировано / Бэклог / Важное
-    if (lower.includes('план') || lower.includes('запланирован') || lower.includes('todo') || lower.includes('не начато')) {
+    if (
+      lower.includes('план') ||
+      lower.includes('запланирован') ||
+      lower.includes('todo') ||
+      lower.includes('не начато')
+    ) {
       const state =
         workflowStates.find(s => s.type.toLowerCase() === 'unstarted') ||
         workflowStates.find(s => s.type.toLowerCase() === 'backlog');
@@ -205,7 +224,12 @@ export function mapStatus(
   if (isCompleted) {
     const completedState =
       workflowStates.find(s => s.type.toLowerCase() === 'completed') ||
-      workflowStates.find(s => s.name.toLowerCase().includes('done') || s.name.toLowerCase().includes('готов') || s.name.toLowerCase().includes('завершен'));
+      workflowStates.find(
+        s =>
+          s.name.toLowerCase().includes('done') ||
+          s.name.toLowerCase().includes('готов') ||
+          s.name.toLowerCase().includes('завершен'),
+      );
     if (completedState) return completedState.id;
   }
 
@@ -256,7 +280,9 @@ export function resolveAssignee(
         return { shouldSkip: true };
       }
       // Проверяем существование в Linear
-      const targetUser = linearUsers.find(u => u.id === mappingKey || u.email.toLowerCase() === mappingKey.toLowerCase());
+      const targetUser = linearUsers.find(
+        u => u.id === mappingKey || u.email.toLowerCase() === mappingKey.toLowerCase(),
+      );
       if (targetUser) {
         return { assigneeId: targetUser.id };
       }
@@ -289,10 +315,7 @@ export function resolveSubscribers(
   const subscribersSet = new Set<string>();
 
   // 1. Глобальный наблюдатель (например, Team Lead)
-  if (
-    (watcherStrategy === 'global_watcher' || watcherStrategy === 'both') &&
-    globalWatcherUserId
-  ) {
+  if ((watcherStrategy === 'global_watcher' || watcherStrategy === 'both') && globalWatcherUserId) {
     subscribersSet.add(globalWatcherUserId);
   }
 
@@ -327,7 +350,9 @@ export function mapProject(weeekProject: WeeekProject, teamId: string): CreatePr
   return {
     teamId,
     name: weeekProject.name.trim(),
-    description: weeekProject.description ? normalizeDescriptionToMarkdown(weeekProject.description) : undefined,
+    description: weeekProject.description
+      ? normalizeDescriptionToMarkdown(weeekProject.description)
+      : undefined,
   };
 }
 
@@ -404,7 +429,9 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
   // 2. Дедлайн (dueDate)
   const dueDate = formatLinearDueDate(weeekTask.dateEnd || weeekTask.date);
   if ((weeekTask.dateEnd || weeekTask.date) && !dueDate) {
-    warnings.push(`Некорректный формат даты задачи ID ${weeekTask.id}: ${weeekTask.dateEnd || weeekTask.date}`);
+    warnings.push(
+      `Некорректный формат даты задачи ID ${weeekTask.id}: ${weeekTask.dateEnd || weeekTask.date}`,
+    );
   }
 
   // 3. Статус (с учетом канбан-колонки)
@@ -419,7 +446,10 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
 
   // 4. Исполнитель
   let assigneeId: string | undefined;
-  const firstAssignee = Array.isArray(weeekTask.assignees) && weeekTask.assignees.length > 0 ? weeekTask.assignees[0] : null;
+  const firstAssignee =
+    Array.isArray(weeekTask.assignees) && weeekTask.assignees.length > 0
+      ? weeekTask.assignees[0]
+      : null;
   if (firstAssignee) {
     const assigneeMatch = resolveAssignee(firstAssignee, context.linearUsers, context.userMapping);
     if (assigneeMatch.shouldSkip) {

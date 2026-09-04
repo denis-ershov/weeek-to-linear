@@ -16,7 +16,8 @@ describe('utils/markdown', () => {
   });
 
   it('должен корректно конвертировать HTML в Markdown', () => {
-    const html = '<h1>Заголовок</h1><p>Текст с <strong>жирным</strong> и <a href="https://example.com">ссылкой</a>.</p>';
+    const html =
+      '<h1>Заголовок</h1><p>Текст с <strong>жирным</strong> и <a href="https://example.com">ссылкой</a>.</p>';
     const result = normalizeDescriptionToMarkdown(html);
     expect(result).toContain('# Заголовок');
     expect(result).toContain('**жирным**');
@@ -24,7 +25,8 @@ describe('utils/markdown', () => {
   });
 
   it('должен вырезать небезопасные теги script и iframe', () => {
-    const malicious = '<p>Безопасный текст</p><script>alert("xss")</script><iframe src="evil.com"></iframe>';
+    const malicious =
+      '<p>Безопасный текст</p><script>alert("xss")</script><iframe src="evil.com"></iframe>';
     const result = normalizeDescriptionToMarkdown(malicious);
     expect(result).toBe('Безопасный текст');
     expect(result).not.toContain('alert');

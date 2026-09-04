@@ -1179,3 +1179,45 @@ input:focus,
   gap: var(--space-sm);
   margin-top: var(--space-sm);
 }
+
+/* ==============================================================================
+ * Mobile-First & Accessibility Hardening (@user_global rules 8-11, 16)
+ * ============================================================================== */
+@media (max-width: 640px) {
+  /* Правило 16: tap-targets не менее 44px */
+  .btn,
+  .form-input,
+  .form-select,
+  .radio-label,
+  .lang-pill-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Правило 10-11: карточный вид вместо таблиц на мобильных устройствах */
+  .mapping-table thead {
+    display: none;
+  }
+
+  .mapping-table,
+  .mapping-table tbody,
+  .mapping-table tr,
+  .mapping-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mapping-table tr {
+    margin-bottom: var(--space-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .mapping-table td {
+    padding: 4px 0;
+    border-top: none;
+  }
+}

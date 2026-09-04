@@ -2,7 +2,13 @@
  * Типы данных и DTO для веб-сервера и SSE-стриминга сервиса weeek-to-linear.
  */
 
-import type { MigrationSummary, WatcherStrategy, SyncStrategy, CommentStrategy, CustomFieldsStrategy } from '../core/types.js';
+import type {
+  MigrationSummary,
+  WatcherStrategy,
+  SyncStrategy,
+  CommentStrategy,
+  CustomFieldsStrategy,
+} from '../core/types.js';
 
 export interface ServerStatusResponse {
   ok: boolean;
@@ -69,19 +75,13 @@ export interface StartMigrationRequest {
  * Типы событий Server-Sent Events (SSE)
  */
 export type SseEventType =
-  | 'stage'
-  | 'progress'
-  | 'warning'
-  | 'error'
-  | 'done'
-  | 'aborted'
-  | 'heartbeat';
+  'stage' | 'progress' | 'warning' | 'error' | 'done' | 'aborted' | 'heartbeat';
 
 export interface SseEventData {
   type: SseEventType;
   stageNumber?: number;
   stageName?: string;
-  progressType?: 'projects' | 'labels' | 'tasks' | 'documents';
+  progressType?: 'projects' | 'labels' | 'tasks' | 'comments' | 'documents';
   current?: number;
   total?: number;
   itemName?: string;

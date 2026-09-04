@@ -32,16 +32,21 @@ describe('core/state', () => {
     manager.recordProject('w_prj_1', 'lin_prj_1', 'Project 1');
     manager.recordTask('w_tsk_1', 'lin_iss_1', 'Task 1', null, 'ENG-1');
     manager.recordLabel('w_tag_1', 'lin_lbl_1', 'Bug');
+    manager.recordComment('w_cm_1', 'lin_cm_1', 'w_tsk_1');
 
     expect(manager.isProjectMigrated('w_prj_1')).toBe(true);
     expect(manager.isTaskMigrated('w_tsk_1')).toBe(true);
     expect(manager.isLabelMigrated('w_tag_1')).toBe(true);
+    expect(manager.isCommentMigrated('w_cm_1')).toBe(true);
     expect(manager.getLinearTaskId('w_tsk_1')).toBe('lin_iss_1');
     expect(manager.getLinearProjectId('w_prj_1')).toBe('lin_prj_1');
+    expect(manager.getLinearCommentId('w_cm_1')).toBe('lin_cm_1');
 
     // Проверяем чтение новым экземпляром
     const newManager = new StateManager(testStatePath);
     expect(newManager.isTaskMigrated('w_tsk_1')).toBe(true);
+    expect(newManager.isCommentMigrated('w_cm_1')).toBe(true);
+    expect(newManager.getLinearCommentId('w_cm_1')).toBe('lin_cm_1');
     expect(newManager.getState().targetTeamId).toBe('team_123');
   });
 });

@@ -16,7 +16,9 @@ export class PreflightValidator {
   /**
    * Выполнение предмиграционной проверки (Preflight Validation)
    */
-  public static async validate(params: PreflightValidationParams): Promise<PreflightValidationResult> {
+  public static async validate(
+    params: PreflightValidationParams,
+  ): Promise<PreflightValidationResult> {
     const warnings: string[] = [];
     const errors: string[] = [];
 
@@ -64,7 +66,9 @@ export class PreflightValidator {
 
     try {
       const [weeekProjects, weeekUsers, weeekTags, linearUsers] = await Promise.all([
-        params.weeekProjectId ? [await params.weeekClient.getProject(params.weeekProjectId)] : params.weeekClient.getProjects(),
+        params.weeekProjectId
+          ? [await params.weeekClient.getProject(params.weeekProjectId)]
+          : params.weeekClient.getProjects(),
         params.weeekClient.getUsers(),
         params.weeekClient.getTags(),
         params.linearClient.getUsers(),

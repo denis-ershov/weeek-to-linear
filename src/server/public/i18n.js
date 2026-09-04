@@ -33,7 +33,8 @@
 
       // Шаг 2
       'step2.title': 'Выбор проектов и целевой команды',
-      'step2.subtitle': 'Выберите, какие проекты из WEEEK перенести, и укажите целевую команду Linear.',
+      'step2.subtitle':
+        'Выберите, какие проекты из WEEEK перенести, и укажите целевую команду Linear.',
       'step2.teamTitle': 'Целевая команда Linear',
       'step2.teamLabel': 'Команда назначения',
       'step2.teamPlaceholder': 'Загрузка команд...',
@@ -46,15 +47,20 @@
 
       // Шаг 3
       'step3.title': 'Настройка сопоставления данных',
-      'step3.subtitle': 'Проверьте соответствие канбан-колонок, пользователей, наблюдателей и параметры синхронизации.',
+      'step3.subtitle':
+        'Проверьте соответствие канбан-колонок, пользователей, наблюдателей и параметры синхронизации.',
       'step3.colMappingTitle': 'Канбан-колонки WEEEK → Linear Workflow States',
       'step3.createMissingTitle': 'Создавать отсутствующие статусы в Linear',
-      'step3.createMissingDesc': 'Автоматически создать Workflow State в команде Linear, если нет точного совпадения',
+      'step3.createMissingDesc':
+        'Автоматически создать Workflow State в команде Linear, если нет точного совпадения',
       'step3.renameMatchedTitle': 'Переименовать сопоставленные статусы Linear',
-      'step3.renameMatchedDesc': 'Переименовать и перекрасить сопоставленные статусы Linear в точные названия и цвета из WEEEK',
+      'step3.renameMatchedDesc':
+        'Переименовать и перекрасить сопоставленные статусы Linear в точные названия и цвета из WEEEK',
       'step3.recreateTitle': 'Полная замена колонок (1-в-1 как в WEEEK)',
-      'step3.recreateDesc': 'Архивировать лишние дефолтные статусы Linear и создать точную структуру колонок из WEEEK',
-      'step3.colMappingHint': 'Сопоставьте каждую колонку доски WEEEK со статусом Linear или выберите создание нового:',
+      'step3.recreateDesc':
+        'Архивировать лишние дефолтные статусы Linear и создать точную структуру колонок из WEEEK',
+      'step3.colMappingHint':
+        'Сопоставьте каждую колонку доски WEEEK со статусом Linear или выберите создание нового:',
       'step3.userMappingTitle': 'Исполнители (User Mapping & Fallback)',
       'step3.userMappingHint': 'Укажите, кому назначать задачи, если пользователь не найден:',
       'step3.watcherTitle': 'Наблюдатели (Subscribers / Watchers)',
@@ -70,7 +76,8 @@
       'step3.dryRunDesc': 'Выполнить расчет и валидацию без изменений в Linear',
       'step3.docsTitle': 'Переносить документы базы знаний',
       'step3.docsDesc': 'Создавать статьи в Linear Project Documents',
-      'step3.docsDisabledDesc': '⚠️ Временно недоступно (в публичном API WEEEK отсутствует эндпоинт документов)',
+      'step3.docsDisabledDesc':
+        '⚠️ Временно недоступно (в публичном API WEEEK отсутствует эндпоинт документов)',
       'step3.completedTitle': 'Переносить завершенные задачи',
       'step3.completedDesc': 'Включает задачи со статусом Completed',
       'step3.syncLabel': 'Поведение при повторном запуске:',
@@ -80,8 +87,9 @@
       'step3.syncUpdateAllDesc': '(поля задач и комментарии)',
       'step3.syncStatusOnly': 'Обновлять только статус и дедлайн',
       'step3.syncStatusOnlyDesc': '(без обновления описания)',
+      'step3.syncUpdateComments': 'Обновлять только комментарии',
+      'step3.syncUpdateCommentsDesc': '(не меняя поля задач)',
       'step3.commentsLabel': 'Перенос комментариев к задачам:',
-      'step3.commentsDisabledDesc': '⚠️ Временно недоступно (в публичном API WEEEK отсутствует эндпоинт комментариев)',
       'step3.commentNone': 'Не переносить',
       'step3.commentNoneDesc': '(пропустить комментарии)',
       'step3.commentTextOnly': 'Текст с именем автора',
@@ -93,7 +101,8 @@
       'step3.customFieldsAppendDesc': '(структурированный блок в конце задачи)',
       'step3.customFieldsNone': 'Не переносить',
       'step3.customFieldsNoneDesc': '(пропускать кастомные поля)',
-      'step3.ignoredCustomFieldsPlaceholder': 'Игнорируемые поля через запятую (например: Бюджет, Секретно)',
+      'step3.ignoredCustomFieldsPlaceholder':
+        'Игнорируемые поля через запятую (например: Бюджет, Секретно)',
       'step3.btnBack': 'Назад',
       'step3.btnStart': 'Запустить Dry Run',
 
@@ -105,6 +114,7 @@
       'step4.cntProjects': 'Проекты',
       'step4.cntTasks': 'Задачи',
       'step4.cntLabels': 'Метки',
+      'step4.cntComments': 'Комментарии',
       'step4.cntDocs': 'Документы',
       'step4.cntWarnings': 'Предупреждения',
       'step4.cntErrors': 'Ошибки',
@@ -123,6 +133,17 @@
       'step5.btnDownloadMd': 'Скачать Markdown отчет',
       'step5.btnDownloadJson': 'Скачать JSON отчет',
       'step5.btnRestart': 'Новая миграция',
+      'step5.createdProjects': 'Создано проектов',
+      'step5.createdTasks': 'Создано задач',
+      'step5.updatedTasks': 'Обновлено задач',
+      'step5.createdLabels': 'Создано меток',
+      'step5.createdComments': 'Создано комментариев',
+      'step5.createdDocs': 'Создано документов',
+      'step5.skippedTasks': 'Пропущено задач',
+      'step5.errorsCount': 'Ошибок',
+      'step5.startDate': 'Дата запуска:',
+      'step5.duration': 'Длительность:',
+      'step5.sec': 'сек',
 
       // Footer
       'footer.text': 'WEEEK → Linear Migration Tool • Открытый исходный код по лицензии GPL v3',
@@ -130,7 +151,8 @@
 
       // About Modal
       'about.modalTitle': 'О сервисе WEEEK → Linear',
-      'about.modalDesc': 'Профессиональный инструмент переноса проектов, задач, многоуровневых подзадач, документов и структуры из WEEEK в Linear.',
+      'about.modalDesc':
+        'Профессиональный инструмент переноса проектов, задач, многоуровневых подзадач, документов и структуры из WEEEK в Linear.',
       'about.version': 'Версия:',
       'about.license': 'Лицензия:',
 
@@ -151,7 +173,8 @@
       'step2.noDesc': 'Без описания',
       'step2.selected': '✓ Выбран',
       'step2.clickToSelect': 'Нажмите для выбора',
-      'step3.noColumns': 'Колонки канбан-доски в WEEEK не найдены или доска пуста. Задачи будут распределены по стандартным статусам Linear.',
+      'step3.noColumns':
+        'Колонки канбан-доски в WEEEK не найдены или доска пуста. Задачи будут распределены по стандартным статусам Linear.',
       'step3.createStatePrefix': '➕ Создать в Linear: ',
       'step3.noUsers': 'Пользователи WEEEK не найдены',
       'step3.unassigned': 'Без исполнителя (Unassigned)',
@@ -215,7 +238,8 @@
 
       // Step 2
       'step2.title': 'Select Projects & Target Team',
-      'step2.subtitle': 'Choose which WEEEK projects to migrate and specify the target Linear team.',
+      'step2.subtitle':
+        'Choose which WEEEK projects to migrate and specify the target Linear team.',
       'step2.teamTitle': 'Target Linear Team',
       'step2.teamLabel': 'Target team',
       'step2.teamPlaceholder': 'Loading teams...',
@@ -228,15 +252,20 @@
 
       // Step 3
       'step3.title': 'Data Mapping Settings',
-      'step3.subtitle': 'Review kanban column mapping, user assignments, subscribers, and sync options.',
+      'step3.subtitle':
+        'Review kanban column mapping, user assignments, subscribers, and sync options.',
       'step3.colMappingTitle': 'WEEEK Kanban Columns → Linear Workflow States',
       'step3.createMissingTitle': 'Create missing workflow states in Linear',
-      'step3.createMissingDesc': 'Automatically create a Workflow State in the Linear team if no exact match is found',
+      'step3.createMissingDesc':
+        'Automatically create a Workflow State in the Linear team if no exact match is found',
       'step3.renameMatchedTitle': 'Rename matched Linear states',
-      'step3.renameMatchedDesc': 'Rename and recolor matched Linear states to exact WEEEK column names and colors',
+      'step3.renameMatchedDesc':
+        'Rename and recolor matched Linear states to exact WEEEK column names and colors',
       'step3.recreateTitle': 'Full replacement (1-to-1 from WEEEK)',
-      'step3.recreateDesc': 'Archive extra default Linear states and recreate exact WEEEK column structure',
-      'step3.colMappingHint': 'Map each WEEEK board column to a Linear state or choose to create a new one:',
+      'step3.recreateDesc':
+        'Archive extra default Linear states and recreate exact WEEEK column structure',
+      'step3.colMappingHint':
+        'Map each WEEEK board column to a Linear state or choose to create a new one:',
       'step3.userMappingTitle': 'Assignees (User Mapping & Fallback)',
       'step3.userMappingHint': 'Specify who to assign issues to if a user is not found:',
       'step3.watcherTitle': 'Subscribers / Watchers',
@@ -252,7 +281,8 @@
       'step3.dryRunDesc': 'Validate and calculate without making changes in Linear',
       'step3.docsTitle': 'Migrate knowledge base documents',
       'step3.docsDesc': 'Create articles in Linear Project Documents',
-      'step3.docsDisabledDesc': '⚠️ Temporarily unavailable (WEEEK public API lacks document endpoints)',
+      'step3.docsDisabledDesc':
+        '⚠️ Temporarily unavailable (WEEEK public API lacks document endpoints)',
       'step3.completedTitle': 'Migrate completed tasks',
       'step3.completedDesc': 'Includes tasks with Completed status',
       'step3.syncLabel': 'Re-run behavior:',
@@ -262,8 +292,9 @@
       'step3.syncUpdateAllDesc': '(update issue fields and comments)',
       'step3.syncStatusOnly': 'Update status and deadline only',
       'step3.syncStatusOnlyDesc': '(preserve description)',
+      'step3.syncUpdateComments': 'Update comments only',
+      'step3.syncUpdateCommentsDesc': '(without modifying issue fields)',
       'step3.commentsLabel': 'Task comments migration:',
-      'step3.commentsDisabledDesc': '⚠️ Temporarily unavailable (WEEEK public API lacks task comment endpoints)',
       'step3.commentNone': 'Do not migrate',
       'step3.commentNoneDesc': '(skip task comments)',
       'step3.commentTextOnly': 'Text with author name',
@@ -275,7 +306,8 @@
       'step3.customFieldsAppendDesc': '(structured block at the end of issue)',
       'step3.customFieldsNone': 'Do not migrate',
       'step3.customFieldsNoneDesc': '(skip custom fields)',
-      'step3.ignoredCustomFieldsPlaceholder': 'Comma-separated ignored fields (e.g. Budget, Secret)',
+      'step3.ignoredCustomFieldsPlaceholder':
+        'Comma-separated ignored fields (e.g. Budget, Secret)',
       'step3.btnBack': 'Back',
       'step3.btnStart': 'Start Dry Run',
 
@@ -287,6 +319,7 @@
       'step4.cntProjects': 'Projects',
       'step4.cntTasks': 'Issues',
       'step4.cntLabels': 'Labels',
+      'step4.cntComments': 'Comments',
       'step4.cntDocs': 'Documents',
       'step4.cntWarnings': 'Warnings',
       'step4.cntErrors': 'Errors',
@@ -305,6 +338,17 @@
       'step5.btnDownloadMd': 'Download Markdown report',
       'step5.btnDownloadJson': 'Download JSON report',
       'step5.btnRestart': 'New migration',
+      'step5.createdProjects': 'Projects created',
+      'step5.createdTasks': 'Issues created',
+      'step5.updatedTasks': 'Issues updated',
+      'step5.createdLabels': 'Labels created',
+      'step5.createdComments': 'Comments created',
+      'step5.createdDocs': 'Documents created',
+      'step5.skippedTasks': 'Issues skipped',
+      'step5.errorsCount': 'Errors',
+      'step5.startDate': 'Start date:',
+      'step5.duration': 'Duration:',
+      'step5.sec': 's',
 
       // Footer
       'footer.text': 'WEEEK → Linear Migration Tool • Open Source under GPL v3 License',
@@ -312,7 +356,8 @@
 
       // About Modal
       'about.modalTitle': 'About WEEEK → Linear',
-      'about.modalDesc': 'Professional tool for migrating projects, tasks, multi-level subtasks, documents, and structure from WEEEK to Linear.',
+      'about.modalDesc':
+        'Professional tool for migrating projects, tasks, multi-level subtasks, documents, and structure from WEEEK to Linear.',
       'about.version': 'Version:',
       'about.license': 'License:',
 
@@ -333,7 +378,8 @@
       'step2.noDesc': 'No description',
       'step2.selected': '✓ Selected',
       'step2.clickToSelect': 'Click to select',
-      'step3.noColumns': 'No kanban columns found in WEEEK or board is empty. Issues will be mapped to standard Linear states.',
+      'step3.noColumns':
+        'No kanban columns found in WEEEK or board is empty. Issues will be mapped to standard Linear states.',
       'step3.createStatePrefix': '➕ Create in Linear: ',
       'step3.noUsers': 'WEEEK users not found',
       'step3.unassigned': 'Unassigned',
@@ -428,7 +474,9 @@
     // Сохранить выбор
     try {
       localStorage.setItem('weeek_lang', lang);
-    } catch (_) { /* Safari private mode */ }
+    } catch {
+      /* Safari private mode */
+    }
 
     // Уведомить подписчиков (app.js) о смене языка
     window.dispatchEvent(new CustomEvent('localeChanged', { detail: { locale: lang } }));
@@ -447,7 +495,9 @@
         const nav = (navigator.language || '').toLowerCase();
         lang = nav.startsWith('ru') ? 'ru' : 'en';
       }
-    } catch (_) { /* игнорируем ошибки localStorage */ }
+    } catch {
+      /* игнорируем ошибки localStorage */
+    }
 
     applyLocale(lang);
 

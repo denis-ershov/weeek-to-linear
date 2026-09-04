@@ -36,15 +36,16 @@ export const ru: I18nDictionary = {
       noDocs: 'Не переносить документы базы знаний',
       createMissingStates: 'Автоматически создавать отсутствующие статусы/колонки в Linear',
       renameMatchedStates: 'Переименовать сопоставленные статусы Linear в формат WEEEK',
-      recreateColumns: 'Полная замена: архивировать лишние статусы и пересоздать точную структуру из WEEEK',
+      recreateColumns:
+        'Полная замена: архивировать лишние статусы и пересоздать точную структуру из WEEEK',
       includeDeleted: 'Переносить удаленные задачи WEEEK',
       syncStrategy: 'Стратегия повторного запуска: skip | update_all | update_status_only',
       commentStrategy: 'Стратегия переноса комментариев: none | text_only | mapped_authors',
       watcherStrategy: 'Стратегия наблюдателей: none | secondary_assignees | global_watcher | both',
       globalWatcher: 'ID пользователя Linear для назначения глобальным наблюдателем',
       unmatchedUser: 'Действие при ненайденном пользователе: unassigned | skip | abort',
-      columnMapping: "JSON строка маппинга колонок (напр. '{\"col_1\":\"st_1\"}')",
-      userMapping: "JSON строка маппинга пользователей (напр. '{\"usr_w\":\"usr_lin\"}')",
+      columnMapping: 'JSON строка маппинга колонок (напр. \'{"col_1":"st_1"}\')',
+      userMapping: 'JSON строка маппинга пользователей (напр. \'{"usr_w":"usr_lin"}\')',
       lang: 'Язык интерфейса: ru | en',
       port: 'Порт для запуска сервера (по умолчанию: 3456)',
       noOpen: 'Не открывать браузер автоматически',
@@ -111,7 +112,8 @@ export const ru: I18nDictionary = {
       allProjects: '📦 Все проекты WEEEK',
       selectTeam: 'Выберите целевую команду Linear:',
       columnModeQuestion: 'Как переносить канбан-колонки и статусы WEEEK в Linear?',
-      columnModeCreateMissing: '➕ Авто-сопоставление + создание недостающих статусов (Рекомендуется)',
+      columnModeCreateMissing:
+        '➕ Авто-сопоставление + создание недостающих статусов (Рекомендуется)',
       columnModeRename: '✏️ Переименовать сопоставленные статусы Linear в точные названия WEEEK',
       columnModeRecreate: '🔄 Полная замена: пересоздать структуру колонок 1-в-1 как в WEEEK',
       columnModeExisting: '🔒 Использовать только существующие статусы Linear без изменений',
@@ -126,7 +128,14 @@ export const ru: I18nDictionary = {
       syncUpdateAll: '🔄 Полное обновление (поля задач и комментарии)',
       syncUpdateStatus: '⚡ Обновлять только статус и дедлайн (без комментариев)',
       syncUpdateComments: '💬 Обновлять только комментарии (без изменения полей задач)',
-      resumeConfirm: 'Обнаружена предыдущая миграция ({count} сохраненных задач). Продолжить (Resume)?',
+      commentQuestion: 'Стратегия переноса комментариев к задачам:',
+      commentNone: '🚫 Не переносить комментарии',
+      commentTextOnly: '💬 Текст с указанием автора (По умолчанию)',
+      commentMappedAuthors: '👤 Сопоставлять авторов через User Mapping',
+      commentsCreated: 'Комментариев к созданию:',
+      commentsSkipped: 'пропущено:',
+      resumeConfirm:
+        'Обнаружена предыдущая миграция ({count} сохраненных задач). Продолжить (Resume)?',
       forceConfirm: 'Сбросить сохраненный прогресс и начать заново (--force)?',
       dryRunComplete: 'РЕЖИМ DRY RUN ЗАВЕРШЕН — ИЗМЕНЕНИЯ НЕ ВНОСИЛИСЬ',
       successComplete: 'МИГРАЦИЯ УСПЕШНО ЗАВЕРШЕНА',
@@ -194,7 +203,8 @@ export const ru: I18nDictionary = {
 
     step3: {
       title: 'Настройка сопоставления данных',
-      subtitle: 'Проверьте соответствие канбан-колонок, пользователей, наблюдателей и параметры синхронизации.',
+      subtitle:
+        'Проверьте соответствие канбан-колонок, пользователей, наблюдателей и параметры синхронизации.',
       columnMappingTitle: 'Канбан-колонки WEEEK → Linear Workflow States',
       optCreateMissing: 'Автоматически создавать отсутствующие статусы в Linear',
       optRenameMatched: 'Переименовать сопоставленные статусы в точные названия WEEEK',
@@ -285,7 +295,8 @@ export const ru: I18nDictionary = {
     },
     weeekClient: {
       request: 'Выполнение запроса к WEEEK API',
-      usersNotFound: 'Пользователи рабочего пространства WEEEK не найдены по стандартным эндпоинтам',
+      usersNotFound:
+        'Пользователи рабочего пространства WEEEK не найдены по стандартным эндпоинтам',
       tagsNotFound: 'Теги WEEEK не найдены или список пуст',
       columnsLoaded: 'Загружено колонок канбан-досок WEEEK: %d',
       docsLoaded: 'Загружено документов базы знаний WEEEK: %d',
@@ -384,4 +395,3 @@ export const ru: I18nDictionary = {
     moreTasksNote: '_... и еще %d задач (полный список доступен в migration-report.json)_',
   },
 };
-

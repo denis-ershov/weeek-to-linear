@@ -33,7 +33,7 @@ export class ApiError extends Error {
     this.status = options?.status;
     this.headers = options?.headers;
     this.responseBody = options?.responseBody;
-    
+
     // 400, 401, 403, 404 считаются фатальными ошибками запроса (не подлежат retry)
     this.isFatal =
       options?.isFatal ??
@@ -93,7 +93,13 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
       const retryAfter = error instanceof ApiError ? getRetryAfterMs(error.headers) : null;
       if (retryAfter) {
         logger.warn(
-          tf('logs.retry.retrying', error.attemptNumber, error.retriesLeft, Math.round(retryAfter / 1000), error.message),
+          tf(
+            'logs.retry.retrying',
+            error.attemptNumber,
+            error.retriesLeft,
+            Math.round(retryAfter / 1000),
+            error.message,
+          ),
         );
       } else {
         logger.debug(

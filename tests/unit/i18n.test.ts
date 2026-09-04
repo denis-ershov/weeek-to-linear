@@ -9,7 +9,9 @@ describe('i18n module', () => {
   it('должен переводить ключи на русский язык по умолчанию', () => {
     expect(getLocale()).toBe('ru');
     expect(t('common.cancel')).toBe('Операция отменена');
-    expect(t('cli.commands.migrate')).toBe('Запуск интерактивного мастера миграции задач и проектов из WEEEK в Linear');
+    expect(t('cli.commands.migrate')).toBe(
+      'Запуск интерактивного мастера миграции задач и проектов из WEEEK в Linear',
+    );
   });
 
   it('должен переключать локаль на английскую', () => {

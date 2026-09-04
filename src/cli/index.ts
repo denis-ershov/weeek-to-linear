@@ -18,10 +18,7 @@ program
   .version(CONSTANTS.APP_VERSION, '-v, --version', t('cli.versionFlag'))
   .option('--lang <ru|en>', t('cli.flags.lang'), detectLocale());
 
-program
-  .command('auth:test')
-  .description(t('cli.commands.authTest'))
-  .action(authTestCommand);
+program.command('auth:test').description(t('cli.commands.authTest')).action(authTestCommand);
 
 program
   .command('weeek:projects')
@@ -47,34 +44,21 @@ program
   .option('--rename-matched-states', t('cli.flags.renameMatchedStates'), false)
   .option('--recreate-columns', t('cli.flags.recreateColumns'), false)
   .option('--include-deleted', t('cli.flags.includeDeleted'))
-  .option(
-    '--sync-strategy <strategy>',
-    t('cli.flags.syncStrategy'),
-    'skip',
-  )
-  .option(
-    '--comment-strategy <strategy>',
-    t('cli.flags.commentStrategy'),
-    'none',
-  )
-  .option(
-    '--watcher-strategy <strategy>',
-    t('cli.flags.watcherStrategy'),
-    'none',
-  )
+  .option('--sync-strategy <strategy>', t('cli.flags.syncStrategy'), 'skip')
+  .option('--comment-strategy <strategy>', t('cli.flags.commentStrategy'), 'none')
+  .option('--watcher-strategy <strategy>', t('cli.flags.watcherStrategy'), 'none')
   .option('--global-watcher <userId>', t('cli.flags.globalWatcher'))
-  .option(
-    '--unmatched-user <strategy>',
-    t('cli.flags.unmatchedUser'),
-    'unassigned',
-  )
+  .option('--unmatched-user <strategy>', t('cli.flags.unmatchedUser'), 'unassigned')
   .option(
     '--custom-fields-strategy <strategy>',
     'Стратегия переноса кастомных полей (append_to_description|none)',
     'append_to_description',
   )
   .option('--custom-fields-mapping <json>', 'JSON сопоставления кастомных полей WEEEK')
-  .option('--ignore-custom-fields <list>', 'Список имён или ID кастомных полей для пропуска (через запятую)')
+  .option(
+    '--ignore-custom-fields <list>',
+    'Список имён или ID кастомных полей для пропуска (через запятую)',
+  )
   .action(options => {
     let parsedColumnMapping: Record<string, string> | undefined;
     let parsedUserMapping: Record<string, string> | undefined;

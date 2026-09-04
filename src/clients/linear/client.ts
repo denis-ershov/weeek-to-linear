@@ -61,7 +61,11 @@ export class LinearClient {
           };
         } catch (err) {
           const msg = (err as Error).message;
-          if (msg.includes('401') || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('unauthorized')) {
+          if (
+            msg.includes('401') ||
+            msg.toLowerCase().includes('authentication') ||
+            msg.toLowerCase().includes('unauthorized')
+          ) {
             throw new ApiError('Неверный Linear API токен (401 Unauthorized)', {
               status: 401,
               isFatal: true,
@@ -96,7 +100,9 @@ export class LinearClient {
     const teams = await this.getTeams();
     return (
       teams.find(
-        t => t.key.toLowerCase() === keyOrId.toLowerCase() || t.id.toLowerCase() === keyOrId.toLowerCase(),
+        t =>
+          t.key.toLowerCase() === keyOrId.toLowerCase() ||
+          t.id.toLowerCase() === keyOrId.toLowerCase(),
       ) || null
     );
   }
@@ -254,7 +260,10 @@ export class LinearClient {
   async createProject(input: CreateProjectInput): Promise<LinearProject> {
     return this.queue.add(() =>
       withRetry(async () => {
-        logger.debug({ name: input.name, teamId: input.teamId }, t('logs.linearClient.creatingProject'));
+        logger.debug(
+          { name: input.name, teamId: input.teamId },
+          t('logs.linearClient.creatingProject'),
+        );
         const projectPayload = await this.sdk.createProject({
           name: input.name,
           description: input.description || undefined,
@@ -282,7 +291,10 @@ export class LinearClient {
   async createLabel(input: CreateLabelInput): Promise<LinearLabel> {
     return this.queue.add(() =>
       withRetry(async () => {
-        logger.debug({ name: input.name, teamId: input.teamId }, t('logs.linearClient.creatingLabel'));
+        logger.debug(
+          { name: input.name, teamId: input.teamId },
+          t('logs.linearClient.creatingLabel'),
+        );
         const labelPayload = await this.sdk.createIssueLabel({
           name: input.name,
           color: input.color,
@@ -309,7 +321,10 @@ export class LinearClient {
   async createIssue(input: CreateIssueInput): Promise<LinearIssue> {
     return this.queue.add(() =>
       withRetry(async () => {
-        logger.debug({ title: input.title, teamId: input.teamId }, t('logs.linearClient.creatingIssue'));
+        logger.debug(
+          { title: input.title, teamId: input.teamId },
+          t('logs.linearClient.creatingIssue'),
+        );
         const issuePayload = await this.sdk.createIssue({
           teamId: input.teamId,
           title: input.title,
@@ -414,7 +429,10 @@ export class LinearClient {
   async createComment(input: CreateCommentInput): Promise<LinearComment> {
     return this.queue.add(() =>
       withRetry(async () => {
-        logger.debug({ issueId: input.issueId, createAsUser: input.createAsUser }, t('logs.linearClient.creatingComment'));
+        logger.debug(
+          { issueId: input.issueId, createAsUser: input.createAsUser },
+          t('logs.linearClient.creatingComment'),
+        );
         const commentPayload = await this.sdk.createComment({
           issueId: input.issueId,
           body: input.body,
@@ -424,7 +442,9 @@ export class LinearClient {
 
         const comment = await commentPayload.comment;
         if (!comment) {
-          throw new Error(`Не удалось получить созданный комментарий Linear к задаче ${input.issueId}`);
+          throw new Error(
+            `Не удалось получить созданный комментарий Linear к задаче ${input.issueId}`,
+          );
         }
 
         return {

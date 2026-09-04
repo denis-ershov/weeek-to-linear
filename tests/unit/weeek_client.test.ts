@@ -11,9 +11,7 @@ describe('clients/weeek/client', () => {
   });
 
   it('должен выбрасывать ошибку, если токен не передан', () => {
-    expect(() => new WeeekClient({ apiToken: '' })).toThrow(
-      'WEEEK API токен обязателен',
-    );
+    expect(() => new WeeekClient({ apiToken: '' })).toThrow('WEEEK API токен обязателен');
   });
 
   it('getMe() должен возвращать распарсенного пользователя', async () => {
@@ -48,9 +46,7 @@ describe('clients/weeek/client', () => {
     };
 
     const page2 = {
-      tasks: [
-        { id: 3, title: 'Task 3', isCompleted: true, priority: 2 },
-      ],
+      tasks: [{ id: 3, title: 'Task 3', isCompleted: true, priority: 2 }],
       hasMore: false,
     };
 
@@ -109,9 +105,7 @@ describe('clients/weeek/client', () => {
 
   it('getBoards() и getBoardColumns() должны загружать доски и колонки через API', async () => {
     const mockBoards = {
-      boards: [
-        { id: 1, name: 'Основная доска', projectId: 10 },
-      ],
+      boards: [{ id: 1, name: 'Основная доска', projectId: 10 }],
     };
 
     const mockColumns = {
@@ -195,30 +189,89 @@ describe('clients/weeek/client', () => {
     expect(doc?.content).toContain('# Заголовок статьи');
   });
 
-  it('getTaskComments() должен запрашивать и парсить комментарии к задаче', async () => {
-    const mockComments = {
+  it('getTaskComments() должен запрашивать комментарии с пагинацией limit & offset и парсить markdown/parentId', async () => {
+    const page1 = {
       comments: [
         {
           id: 1001,
           taskId: 2001,
-          text: 'Первый комментарий',
+          markdown: '**Важный комментарий**',
           authorId: 'usr-1',
           author: { name: 'Алексей', email: 'alex@example.com' },
-          createdAt: '2026-08-13T10:00:00Z',
+          createdAt: '2026-08-26T10:00:00Z',
         },
       ],
+      hasMore: true,
+    };
+    const page2 = {
+      comments: [
+        {
+          id: 1002,
+          taskId: 2001,
+          parentId: 1001,
+          markdown: 'Ответ на комментарий',
+          authorId: 'usr-2',
+          createdAt: '2026-08-26T10:05:00Z',
+        },
+      ],
+      hasMore: false,
     };
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockComments,
-    });
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => page1,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => page2,
+      });
 
     const comments = await client.getTaskComments('2001');
-    expect(comments).toHaveLength(1);
+    expect(comments).toHaveLength(2);
     expect(comments[0]?.id).toBe('1001');
-    expect(comments[0]?.text).toBe('Первый комментарий');
+    expect(comments[0]?.text).toBe('**Важный комментарий**');
     expect(comments[0]?.author?.name).toBe('Алексей');
+    expect(comments[1]?.id).toBe('1002');
+    expect(comments[1]?.parentId).toBe('1001');
+    expect(comments[1]?.text).toBe('Ответ на комментарий');
+  });
+
+  it('createTaskComment() и deleteTaskComment() должны корректно взаимодействовать с API', async () => {
+    const mockCreated = {
+      comment: {
+        id: 1005,
+        taskId: 2001,
+        markdown: 'Новое примечание',
+        parentId: 1001,
+      },
+    };
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockCreated,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      });
+
+    const created = await client.createTaskComment('2001', {
+      markdown: 'Новое примечание',
+      parentId: 1001,
+    });
+    expect(created.id).toBe('1005');
+    expect(created.text).toBe('Новое примечание');
+    expect(created.parentId).toBe('1001');
+
+    const deleted = await client.deleteTaskComment('2001', '1005');
+    expect(deleted).toBe(true);
   });
 });

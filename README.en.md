@@ -1,7 +1,7 @@
 # WEEEK → Linear Migration Tool
 
 [![CI](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
@@ -15,7 +15,7 @@
 ## ✨ Key Features
 
 - 🚀 **Comprehensive data migration**: automatic migration of projects, tasks, subtask hierarchy, priorities, deadlines, labels, and assignees.
-- 💬 **Task comments migration**: *Temporarily disabled due to the lack of public REST task comment endpoints in official WEEEK API.*
+- 💬 **Task comments migration**: automatic migration of comments from WEEEK to Linear with Markdown formatting, author mapping (`text_only`, `mapped_authors`, `none`), and idempotent tracking.
 - 📋 **WEEEK Custom Fields**:
   - Format text, select, numeric, and system custom fields into a structured Markdown block in issue description.
   - Configure mapping, renaming, or ignoring specific custom fields.
@@ -35,7 +35,7 @@
   - `both`: combination of secondary assignees and global watcher.
 - 🔁 **Idempotency and re-sync strategies**:
   - State saved in `.weeek-linear/state.json`.
-  - Sync modes: `skip` (skip already migrated), `update_all` (full update), `update_status_only` (update status and priority only).
+  - Sync modes: `skip` (skip already migrated), `update_all` (full update), `update_status_only` (update status and priority only), `update_comments_only` (sync new comments only).
 - 💻 **Visual Web UI**: sleek interface inspired by **Linear / Vercel** with Mobile-First responsiveness, card-based layout, and live SSE progress streaming.
 - 🌐 **Multilingual (ru / en)**: language selector in Web UI, `--lang` flag in CLI, auto-detection from system locale.
 - 🔒 **Security-First (Zero Leak)**: local execution, token masking in logs (`[REDACTED]`), strict security policies.
@@ -152,7 +152,8 @@ pnpm cli migrate
 | `--no-completed` | Exclude completed tasks from migration |
 | `--no-docs` | Skip documents *(disabled due to missing WEEEK API)* |
 | `--include-deleted` | Include deleted WEEEK tasks in migration |
-| `--sync-strategy <strategy>` | Re-run behavior: `skip` (default), `update_all`, `update_status_only` |
+| `--sync-strategy <strategy>` | Re-run behavior: `skip` (default), `update_all`, `update_status_only`, `update_comments_only` |
+| `--comment-strategy <strategy>` | Task comment strategy: `text_only` (default), `mapped_authors`, `none` |
 | `--custom-fields-strategy <strategy>` | Custom fields strategy: `append_to_description` (default), `none` |
 | `--custom-fields-mapping <json>` | JSON custom fields mapping string |
 | `--ignore-custom-fields <list>` | Comma-separated list of custom field names/IDs to skip |

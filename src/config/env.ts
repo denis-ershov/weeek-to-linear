@@ -10,14 +10,14 @@ dotenv.config();
  */
 export const EnvSchema = z.object({
   WEEEK_API_TOKEN: z.string().min(1, {
-    message: 'WEEEK_API_TOKEN не указан. Задайте его в .env или передайте через интерактивный ввод.',
+    message:
+      'WEEEK_API_TOKEN не указан. Задайте его в .env или передайте через интерактивный ввод.',
   }),
   LINEAR_API_TOKEN: z.string().min(1, {
-    message: 'LINEAR_API_TOKEN не указан. Задайте его в .env или передайте через интерактивный ввод.',
+    message:
+      'LINEAR_API_TOKEN не указан. Задайте его в .env или передайте через интерактивный ввод.',
   }),
-  LOG_LEVEL: z
-    .enum(['trace', 'debug', 'info', 'warn', 'error', 'silent'])
-    .default('info'),
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'silent']).default('info'),
   API_CONCURRENCY: z
     .string()
     .transform(val => parseInt(val, 10))
@@ -39,7 +39,7 @@ export function getAppConfig(overrides?: Partial<AppConfig>): AppConfig {
     API_CONCURRENCY:
       overrides?.API_CONCURRENCY !== undefined
         ? String(overrides.API_CONCURRENCY)
-        : process.env['API_CONCURRENCY'] ?? String(CONSTANTS.DEFAULT_CONCURRENCY),
+        : (process.env['API_CONCURRENCY'] ?? String(CONSTANTS.DEFAULT_CONCURRENCY)),
     STATE_FILE: overrides?.STATE_FILE ?? process.env['STATE_FILE'] ?? CONSTANTS.DEFAULT_STATE_FILE,
   };
 

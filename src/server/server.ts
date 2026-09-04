@@ -46,16 +46,52 @@ export class WebServer {
   }
 
   /**
-   * Отдача статических файлов SPA
+   * Отдача статических файлов SPA с защитой от Path Traversal
    */
-  private serveStatic(_req: IncomingMessage, res: ServerResponse, url: URL): void {
-    let filePath = path.join(this.publicDir, url.pathname === '/' ? 'index.html' : url.pathname);
-
-    if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      filePath = path.join(this.publicDir, 'index.html');
+  private serveStatic(req: IncomingMessage, res: ServerResponse, url: URL): void {
+    const rawUrl = req.url || '/';
+    if (rawUrl.includes('..') || rawUrl.includes('%2e') || rawUrl.includes('%2E')) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('403 Forbidden');
+      return;
     }
 
-    if (!fs.existsSync(filePath)) {
+    const resolvedPublicDir = path.resolve(this.publicDir);
+
+    let safeRelativePath: string;
+    try {
+      safeRelativePath = path.normalize(decodeURIComponent(url.pathname));
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('400 Bad Request');
+      return;
+    }
+
+    // Удаляем ведущий слэш для корректного объединения
+    if (safeRelativePath.startsWith(path.sep)) {
+      safeRelativePath = safeRelativePath.slice(path.sep.length);
+    } else if (safeRelativePath.startsWith('/')) {
+      safeRelativePath = safeRelativePath.slice(1);
+    }
+
+    let filePath = path.resolve(
+      resolvedPublicDir,
+      safeRelativePath === '' ? 'index.html' : safeRelativePath,
+    );
+
+    // Защита от Path Traversal: путь обязан находиться строго внутри publicDir
+    if (!filePath.startsWith(resolvedPublicDir)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('403 Forbidden');
+      return;
+    }
+
+    // Если запрошенный файл не найден или является директорией — отдаем index.html (SPA Fallback)
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      filePath = path.join(resolvedPublicDir, 'index.html');
+    }
+
+    if (!fs.existsSync(filePath) || !filePath.startsWith(resolvedPublicDir)) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found');
       return;
@@ -79,6 +115,8 @@ export class WebServer {
       'Content-Type': contentType,
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
     });
     res.end(content);
   }

@@ -1,7 +1,7 @@
 # WEEEK → Linear Migration Tool
 
 [![CI](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-ershov/weeek-to-linear/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/denis-ershov/weeek-to-linear)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
@@ -16,7 +16,7 @@
 ## ✨ Ключевые возможности
 
 - 🚀 **Комплексный перенос данных**: автоматическая миграция проектов, задач, иерархии подзадач, приоритетов, дедлайнов, тегов и исполнителей.
-- 💬 **Перенос комментариев к задачам**: *Временно отключен ввиду отсутствия публичных REST-эндпоинтов для комментариев в официальном API WEEEK.*
+- 💬 **Перенос комментариев к задачам**: автоматическая миграция комментариев из WEEEK в Linear с поддержкой Markdown, сопоставлением авторов (`text_only`, `mapped_authors`, `none`) и идемпотентным сохранением.
 - 📋 **Кастомные поля задач WEEEK**:
   - Форматирование текстовых, выборочных, числовых и системных кастомных полей в отдельный Markdown-блок в описании задачи.
   - Настройки сопоставления, переименования или игнорирования конкретных полей.
@@ -36,7 +36,7 @@
   - `both`: комбинация вторичных исполнителей и глобального наблюдателя.
 - 🔁 **Идемпотентность и стратегии повторной синхронизации**:
   - Сохранение состояния в `.weeek-linear/state.json`.
-  - Режимы синхронизации: `skip` (пропуск уже перенесенных), `update_all` (полное обновление), `update_status_only` (обновление только статуса и приоритета).
+  - Режимы синхронизации: `skip` (пропуск уже перенесенных), `update_all` (полное обновление), `update_status_only` (обновление только статуса и приоритета), `update_comments_only` (синхронизация только новых комментариев).
 - 💻 **Визуальный Web UI**: стильный интерфейс в духе **Linear / Vercel** с Mobile-First адаптивностью, карточным интерфейсом и живым SSE-стримингом прогресса.
 - 🌐 **Мультиязычность (ru / en)**: переключатель языка в Web UI, флаг `--lang` в CLI, автоопределение по системной локали.
 - 🔒 **Security-First (Zero Leak)**: локальное выполнение, маскирование токенов в логах (`[REDACTED]`), строгие политики безопасности.
@@ -153,7 +153,8 @@ pnpm cli migrate
 | `--no-completed` | Исключить завершенные задачи из миграции |
 | `--no-docs` | Не переносить документы *(отключено из-за отсутствия API WEEEK)* |
 | `--include-deleted` | Включить удаленные задачи в перенос |
-| `--sync-strategy <strategy>` | Поведение при повторном запуске: `skip` (по умолчанию), `update_all`, `update_status_only` |
+| `--sync-strategy <strategy>` | Поведение при повторном запуске: `skip` (по умолчанию), `update_all`, `update_status_only`, `update_comments_only` |
+| `--comment-strategy <strategy>` | Стратегия переноса комментариев: `text_only` (по умолчанию), `mapped_authors`, `none` |
 | `--custom-fields-strategy <strategy>` | Стратегия кастомных полей: `append_to_description` (по умолчанию), `none` |
 | `--custom-fields-mapping <json>` | JSON-строка сопоставления кастомных полей WEEEK |
 | `--ignore-custom-fields <list>` | Список имен или ID кастомных полей для пропуска через запятую |

@@ -31,11 +31,7 @@ export async function linearTeamsCommand(): Promise<void> {
       t('cli.linear.colName'),
     ]);
     for (const team of teams) {
-      table.push([
-        team.id,
-        theme.primary.bold(team.key),
-        theme.bold(team.name),
-      ]);
+      table.push([team.id, theme.primary.bold(team.key), theme.bold(team.name)]);
     }
 
     console.info(table.toString());

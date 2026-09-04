@@ -4,9 +4,122 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
 
+## [0.4.0] - 2026-09-04
+
+### Добавлено
+
+- **Поддержка миграции комментариев к задачам (Task Comments Migration)**:
+  - Интеграция с новыми официальными эндпоинтами WEEEK Public API (релиз от 26 августа 2026):
+    - `GET /public/v1/tm/tasks/{taskId}/comments` — получение комментариев задачи с автоматической пагинацией (`limit=100`, `offset`, `hasMore`).
+    - `POST /public/v1/tm/tasks/{taskId}/comments` — создание комментариев и ответов в формате Markdown.
+    - `DELETE /public/v1/tm/tasks/{taskId}/comments/{commentId}` — удаление комментария.
+  - Zod-схемы валидации и строгие типы: `WeeekCommentSchema` (с полями `markdown`, `parentId`), `WeeekCommentsResponseSchema` с флагом `hasMore`, входной тип `CreateWeeekCommentInput`.
+  - Стадия 12 конвейера миграции `migratingComments`: последовательный перенос комментариев для каждой перенесённой задачи в Linear через GraphQL-мутацию `commentCreate`.
+  - Стратегии авторства комментариев (`--comment-strategy` / `commentStrategy`):
+    - `text_only` (по умолчанию): добавление цитатного заголовка с именем автора WEEEK и датой создания (`> 💬 **Имя** (Дата): \n\n...`);
+    - `mapped_authors`: сопоставление автора с Linear-пользователем и отображение через `createAsUser: authorName`;
+    - `none`: отключение переноса комментариев.
+  - Новая стратегия синхронизации `update_comments_only`: догрузка исключительно комментариев для уже мигрированных задач без перезаписи полей задач.
+  - Реестр комментариев `comments: Record<WeeekCommentId, LinearCommentId>` в `MigrationState` для строгой идемпотентности и предотвращения дублей.
+  - Разблокировка и интеграция элементов управления комментариями в Web UI:
+    - Разблокированы радио-кнопки выбора стратегии комментариев на Шаге 3;
+    - Добавлена опция синхронизации «Только новые комментарии» (`update_comments_only`);
+    - Добавлена карточка счетчика комментариев `#cnt-comments` на Шаге 4 с живой SSE-индикацией;
+    - Отображение созданных и пропущенных комментариев в сводном отчете Шага 5.
+  - Поддержка интерактивных промптов и флага `--comment-strategy` в CLI с локализацией на русском и английском языках (`ru`/`en`).
+  - Комплексные unit- и интеграционные тесты для методов клиента WEEEK, реестра состояния и полного конвейера миграции комментариев.
+- **Комплексный аудит качества кода, безопасности и жизненного цикла (Code & Quality Audit)**:
+  - **Безопасность Web-сервера и SecOps**:
+    - Усилена защита статического файлового сервера (`serveStatic`) от атак обхода каталогов (Path Traversal): превентивная проверка сырого URL (`req.url`) на закодированные маркеры `%2e%2e`, `..`, `%2f`, `%5c`, с возвратом `403 Forbidden`.
+    - Ограничен заголовок CORS (`Access-Control-Allow-Origin`): запрещен wildcard `*`, разрешены исключительно доверенные локальные адреса (`localhost`, `127.0.0.1`) и соответствующий origin сервера.
+    - Внедрены обязательные заголовки безопасности HTTP-ответов: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`.
+    - Экспортирована функция `redactSensitiveData` в `src/utils/logger.ts` для маскирования чувствительных токенов и секретов в логах.
+    - Добавлен тестовый набор `tests/unit/security.test.ts` (6 тестов: блокировка Path Traversal, ограничение CORS, маскирование секретов).
+  - **Управление зависимостями и цепочкой поставок (Supply Chain)**:
+    - Зафиксирован оверрайд `pnpm.overrides.esbuild >=0.28.1` в `package.json`, полностью устраняющий уязвимость `GHSA-g7r4-m6w7-qqqr` (чтение произвольных файлов в Windows).
+    - `pnpm audit` подтверждает 0 уязвимостей.
+  - **Аудит утечек памяти и жизненного цикла ресурсов (`/memory-leak-debugging`)**:
+    - Внедрен кольцевой буфер `MAX_LOG_ENTRIES = 500` для `liveConsoleLogs` в Web UI (`src/server/public/app.js`) с автоматическим удалением устаревших узлов DOM (`firstChild.remove()`).
+    - Создан тестовый набор `tests/unit/memory.test.ts` для проверки корректного жизненного цикла SSE-клиентов (регистрация, автоотписка при закрытии соединения, массовая очистка `closeAll`, отсутствие утечек слушателей при 1000 событиях).
+  - **Mobile First UX/UI и доступность (`@user_global` правила 8, 10, 11, 16)**:
+    - Добавлено медиа-правило `@media (max-width: 640px)` в `src/server/public/app.css`: на узких экранах таблица сопоставления колонок (`.mapping-table`) автоматически преобразуется в стек адаптивных карточек с псевдоэлементами заголовков `td::before`.
+    - Гарантирован минимальный размер сенсорных областей $\ge 44 \times 44$ px для всех кнопок, радиокнопок и полей ввода.
+  - **Расширение тестового покрытия (Backend & Frontend Quality)**:
+    - Добавлен тестовый набор `tests/unit/linear_client.test.ts` (15 тестов, покрытие 91%+): протестированы все GraphQL-мутации (`createWorkflowState`, `updateWorkflowState`, `archiveWorkflowState`, `createIssue`, `createComment`, `createLabel`, `createProject`, `createDocument`, `subscribeUser`).
+    - Расширен тестовый набор `tests/unit/server.test.ts` (8 тестов): валидация `/api/status`, `/api/auth/test`, проверка корректности MIME-типов для CSS и JS, обработка некорректного JSON.
+    - Создан тестовый набор `tests/unit/web_i18n.test.ts`: автоматическая валидация 100% паритета ключей локализации (`ru` и `en`) в Web UI.
+    - Создан тестовый набор `tests/unit/cli.test.ts`: проверка палитры тем оформления и регистрации команд.
+    - Общее число тестов проекта достигло 80 (16 сьютов), 100% успешное прохождение.
+  - **Линтинг, форматирование и CI/CD**:
+    - Интегрирован линтинг клиентских скриптов `src/server/public/**/*.js` в `eslint.config.js` с поддержкой браузерных глобальных переменных.
+    - Выполнено форматирование кодовой базы по Prettier (проходит `npx prettier --check`).
+    - Обновлен рабочий процесс `.github/workflows/ci.yml`: добавлены шаги `pnpm format:check`, `pnpm test:coverage` и `pnpm audit --audit-level=high`.
+    - Скрипт `pnpm typecheck` расширен для одновременной валидации типов как в `src/`, так и в `tests/` (`tsc --noEmit && tsc -p tests/tsconfig.json --noEmit`), устранена нехватка обязательного поля `timestamp` в `tests/unit/memory.test.ts`.
+
+### Изменено
+
+- Обновлена версия приложения до `0.4.0` в `package.json`, `src/config/constants.ts`, Web UI, документации и политике безопасности `SECURITY.md`.
+- `docs/API_ARCHITECTURE.md`: добавлены спецификации REST-эндпоинтов комментариев WEEEK и мутации Linear `commentCreate`.
+- `docs/SECURITY_ARCHITECTURE.md`: добавлены разделы о защите Web UI сервера от Path Traversal, CORS, HTTP-заголовках и аудите зависимостей.
+- `docs/UI_ARCHITECTURE.md`: документирована трансформация таблиц в карточки на мобильных устройствах, стандарт тач-таргетов 44px и кольцевой буфер предотвращения утечек памяти.
+
+### Изменённые файлы
+
+- `package.json`
+- `pnpm-lock.yaml`
+- `eslint.config.js`
+- `.github/workflows/ci.yml`
+- `src/config/constants.ts`
+- `src/clients/weeek/schemas.ts`
+- `src/clients/weeek/types.ts`
+- `src/clients/weeek/client.ts`
+- `src/core/types.ts`
+- `src/core/state.ts`
+- `src/core/engine.ts`
+- `src/core/reporter.ts`
+- `src/server/server.ts`
+- `src/server/routes.ts`
+- `src/server/public/index.html`
+- `src/server/public/app.css`
+- `src/server/public/app.js`
+- `src/server/public/i18n.js`
+- `src/utils/logger.ts`
+- `src/cli/commands/migrate.ts`
+- `src/i18n/types.ts`
+- `src/i18n/ru.ts`
+- `src/i18n/en.ts`
+- `tests/unit/weeek_client.test.ts`
+- `tests/unit/linear_client.test.ts`
+- `tests/unit/state.test.ts`
+- `tests/unit/server.test.ts`
+- `tests/unit/security.test.ts`
+- `tests/unit/memory.test.ts`
+- `tests/unit/web_i18n.test.ts`
+- `tests/unit/cli.test.ts`
+- `tests/integration/engine.test.ts`
+- `SECURITY.md`
+- `README.md`
+- `README.en.md`
+- `docs/API_ARCHITECTURE.md`
+- `docs/SECURITY_ARCHITECTURE.md`
+- `docs/UI_ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+
+### Обоснование
+
+В публичный API WEEEK от 26.08.2026 была добавлена долгожданная поддержка работы с комментариями задач (`/tm/tasks/{taskId}/comments`), что позволило полноценно снять временную блокировку функции и обеспечить перенос истории обсуждений в Linear с соблюдением требований безопасности, идемпотентности и авторства.
+
+### Сведения о миграциях и совместимости
+
+- Формат `state.json` обратно совместим: при чтении файла состояния предыдущих версий (где поле `comments` отсутствовало) `MigrationState` автоматически инициализирует пустой объект `comments: {}`.
+- Действия для отката: при необходимости отката версии достаточно установить версию `0.3.3`, сохранённое состояние задач остаётся валидным.
+
+---
+
 ## [0.3.3] - 2026-08-13
 
 ### Изменено
+
 - **Запрет переноса документов базы знаний (Documents Migration)**:
   - Опция переноса документов заблокирована в Web UI (тумблер `#opt-documents` переведён в статус `disabled` с поясняющей подписью) и выключена в ядре `MigrationEngine`.
   - В документации (`README.md`, `README.en.md`, `CHANGELOG.md`) зафиксирована причина недоступности: отсутствие общедоступных REST-эндпоинтов для получения документов базы знаний в публичном API WEEEK.
@@ -15,6 +128,7 @@
   - Опция переноса комментариев заблокирована в Web UI (переключатели `commentStrategy` переведены в статус `disabled` с поясняющей подписью) и отключена в ядре `MigrationEngine`.
 
 ### Исправлено
+
 - **Интеграционные тесты (`tests/integration/engine.test.ts`)**:
   - Обновлены ожидания в тестовом наборе с учётом блокировки эндпоинта документов WEEEK API. Все 50 тестов успешно проходят.
 
@@ -23,6 +137,7 @@
 ## [0.3.2] - 2026-08-13
 
 ### Добавлено
+
 - **Перенос кастомных полей задач (Task Custom Fields Migration)**:
   - Поддержка нормализации кастомных полей WEEEK (`customFields`/`fields`/`custom_fields`) через Zod-схему в единый формат `{ id, name, type, value }`.
   - Форматирование кастомных полей в виде структурированного Markdown-блока `### 📋 Кастомные поля (WEEEK)` в конце описания задачи Linear при `customFieldsStrategy: append_to_description`.
@@ -30,6 +145,7 @@
   - Добавлены интерактивные элементы управления кастомными полями на Шаге 3 Web UI и CLI флаги `--custom-fields-strategy`, `--custom-fields-mapping`, `--ignore-custom-fields`.
 
 ### Исправлено
+
 - **Загрузка проектных документов WEEEK (Project Documents)**:
   - Добавлена поддержка эндпоинтов проектных документов WEEEK по структуре `/ws/projects/${projectId}/documents`, `/projects/${projectId}/documents`, `/ws/tm/projects/${projectId}/documents`, `/ws/kb/projects/${projectId}/documents` с поддержкой параметров `project_id` (snake_case) и `projectId`.
   - Расширены ключи парсинга в ответе WEEEK REST API: `categories`, `tree`, `result`, `kb`, `pages`, `nodes`, `projectDocuments`.
@@ -43,6 +159,7 @@
 ## [0.3.1] - 2026-08-13
 
 ### Добавлено
+
 - **Миграция комментариев к задачам (Task Comments Migration)**:
   - Поддержка трех стратегий переноса комментариев (`none` | `text_only` | `mapped_authors`).
   - Добавлены типы `WeeekComment`, `CreateCommentInput`, `LinearComment` и методы `getTaskComments()` в WEEEK клиенте и `createComment()` в Linear клиенте.
@@ -53,6 +170,7 @@
   - Обновлены и уточнены подписи для всех 4-х стратегий повторного запуска в CLI и Web UI с четким указанием влияния на комментарии (`skip`: без обновления задач и комментариев, `update_all`: полное обновление полей и комментариев, `update_status_only`: обновление статуса/дедлайна без комментариев, `update_comments_only`: перенос только комментариев).
 
 ### Исправлено
+
 - **Исправление переноса документов базы знаний (Knowledge Base)**:
   - Реализован метод `getSingleDocument(docId)` в клиенте WEEEK для автоматической подгрузки полного текста статей из эндпоинтов `/ws/kb/articles/:id` и `/kb/articles/:id`, когда списочный эндпоинт WEEEK возвращает пустое содержимое (`content: ""`).
   - Добавлена логика `fallbackProjectId` для Linear Project Documents — если у документа WEEEK нет привязки к конкретному проекту или его проект не мигрировался, документ привязывается к первому перенесенному проекту Linear, удовлетворяя обязательное требование GraphQL API Linear `documentCreate`.
@@ -63,6 +181,7 @@
 ## [0.3.0] - 2026-08-12
 
 ### Добавлено
+
 - **Мультиязычность (i18n) — Русский и Английский**:
   - Создана i18n-инфраструктура: `src/i18n/types.ts` (контракт), `src/i18n/ru.ts` и `src/i18n/en.ts` (словари), `src/i18n/index.ts` (ядро: `detectLocale`, `setLocale`, `t`).
   - **CLI**: все пользовательские строки заменены на `t()`. Добавлен флаг `--lang ru|en` и переменная окружения `WEEEK_LANG`. Язык определяется до `program.parse()` — локализован даже вывод `--help`.
@@ -74,16 +193,19 @@
 - Добавлена ссылка `🇬🇧 English version` в начало русского `README.md`.
 
 ### Исправлено
+
 - **Web UI переключатель языка (Segmented Toggle Pill)**: старая кнопка с текстом противоположного языка заменена на двухпозиционный переключатель `RU | EN` с чётким подсвечиванием активного языка.
 - **Локализация подвала (Footer)**: тексты подвала переведены на русский язык при включённой русской локали (`Открытый исходный код по лицензии GPL v3`).
 - **Модальное окно About ("О сервисе")**: кнопка `(i) О сервисе` в шапке подключена к модальному диалогу с информацией о версии v0.3.0, лицензии GNU GPL v3 и стэке технологий.
 - **TypeScript ошибки в тестах**: создан `tsconfig.test.json` с подключением `vitest/globals` в типы — устраняет ошибки `Cannot find name 'describe/it/expect'` в VS Code при использовании `globals: true` в `vitest.config.ts`.
 
 ### Изменено
+
 - Обновлён `app.js`: добавлен вызов `window.i18n.initLocale()` при старте.
 - `index.html` полностью переработан: `lang="ru"` на `<html>`, атрибуты `data-i18n` / `data-i18n-placeholder` / `data-i18n-aria` на всех переводимых элементах.
 
 ### Файлы
+
 - `src/i18n/types.ts` [NEW]
 - `src/i18n/ru.ts` [NEW]
 - `src/i18n/en.ts` [NEW]
@@ -106,6 +228,7 @@
 ## [0.2.0] - 2026-08-12
 
 ### Добавлено
+
 - **Поддержка Канбан-досок и колонок WEEEK**:
   - Реализован надежный каскадный сбор реальных колонок WEEEK через API: запрос досок (`/tm/boards?projectId=...`) с последующим запросом колонок по каждой доске (`/tm/board-columns?boardId=...`), а также поддержка общих эндпоинтов статусов.
   - Полностью устранен хардкод колонок в UI — отображаются исключительно реальные колонки из рабочего пространства WEEEK.
@@ -142,10 +265,12 @@
 ## [0.1.0] - 2026-08-12
 
 ### Исправлено
+
 - Обеспечена 100% корректная кодировка **кириллицы (UTF-8)** в терминале Windows и консоли Node.js: устранено повреждение символов (`╨┐╨╛...`) путем прямой синхронной записи потока и явного форсирования кодировки `utf-8` для `process.stdout` и `process.stderr`.
 - Повышена устойчивость валидатора Zod к реальным данным WEEEK API: добавлена поддержка значений `null` для полей `priority`, `title`, `isCompleted`, `date`, `tags` и `assignees`.
 
 ### Добавлено
+
 - Полная реализация визуального **Web UI** для управления миграцией в браузере (`weeek-to-linear ui` / `weeek-to-linear web`):
   - Локальный HTTP сервер на базе `node:http` (`src/server/server.ts`) с REST API и Server-Sent Events (SSE) стримингом.
   - Семантичный, полностью адаптивный интерфейс **Mobile First** (`src/server/public/`) в темном стиле Linear / Vercel.

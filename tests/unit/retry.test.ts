@@ -31,7 +31,9 @@ describe('utils/retry', () => {
       throw new ApiError('Invalid API Token', { status: 401, isFatal: true });
     });
 
-    await expect(withRetry(fn, { retries: 3, minTimeout: 10 })).rejects.toThrow('Invalid API Token');
+    await expect(withRetry(fn, { retries: 3, minTimeout: 10 })).rejects.toThrow(
+      'Invalid API Token',
+    );
     expect(attempts).toBe(1);
   });
 

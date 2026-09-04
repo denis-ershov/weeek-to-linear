@@ -19,23 +19,26 @@ describe('integration/engine', () => {
     // 1. Мок WEEEK
     const mockWeeek = {
       getMe: vi.fn().mockResolvedValue({ id: '1', email: 'denis@example.com', name: 'Denis' }),
-      getProjects: vi.fn().mockResolvedValue([
-        { id: 'wp_1', name: 'Alpha Project', description: 'Desc 1' },
-      ]),
+      getProjects: vi
+        .fn()
+        .mockResolvedValue([{ id: 'wp_1', name: 'Alpha Project', description: 'Desc 1' }]),
       getProject: vi.fn(),
-      getBoardColumns: vi.fn().mockResolvedValue([
-        { id: 'col_1', name: '👾 В работе', projectId: 'wp_1' },
-      ]),
+      getBoardColumns: vi
+        .fn()
+        .mockResolvedValue([{ id: 'col_1', name: '👾 В работе', projectId: 'wp_1' }]),
       getDocuments: vi.fn().mockResolvedValue([
-        { id: 'wdoc_1', title: 'Knowledge Article', content: '<h1>Header</h1><p>Text</p>', projectId: 'wp_1' },
+        {
+          id: 'wdoc_1',
+          title: 'Knowledge Article',
+          content: '<h1>Header</h1><p>Text</p>',
+          projectId: 'wp_1',
+        },
       ]),
       getUsers: vi.fn().mockResolvedValue([
         { id: 'wu_1', email: 'denis@example.com', name: 'Denis' },
         { id: 'wu_2', email: 'alex@example.com', name: 'Alex' },
       ]),
-      getTags: vi.fn().mockResolvedValue([
-        { id: 'wt_1', title: 'Bug', color: '#ff0000' },
-      ]),
+      getTags: vi.fn().mockResolvedValue([{ id: 'wt_1', title: 'Bug', color: '#ff0000' }]),
       getTasks: vi.fn().mockResolvedValue([
         {
           id: 'wtk_1',
@@ -55,11 +58,31 @@ describe('integration/engine', () => {
           assignees: [{ email: 'alex@example.com' }],
         },
       ]),
+      getTaskComments: vi.fn().mockImplementation(async (taskId: string) => {
+        if (taskId === 'wtk_1') {
+          return [
+            {
+              id: 'wcm_1',
+              taskId: 'wtk_1',
+              text: 'Первый комментарий к задаче',
+              authorId: 'wu_1',
+              author: { name: 'Denis', email: 'denis@example.com' },
+              createdAt: '2026-08-26T12:00:00Z',
+            },
+          ];
+        }
+        return [];
+      }),
     } as unknown as WeeekClient;
 
     // 2. Мок Linear
     const mockLinear = {
-      getViewer: vi.fn().mockResolvedValue({ id: 'lu_1', name: 'Denis', email: 'denis@example.com', organizationName: 'My Org' }),
+      getViewer: vi.fn().mockResolvedValue({
+        id: 'lu_1',
+        name: 'Denis',
+        email: 'denis@example.com',
+        organizationName: 'My Org',
+      }),
       getTeams: vi.fn().mockResolvedValue([{ id: 'lt_1', key: 'ENG', name: 'Engineering' }]),
       getTeam: vi.fn().mockResolvedValue({ id: 'lt_1', key: 'ENG', name: 'Engineering' }),
       getWorkflowStates: vi.fn().mockImplementation(async () => [
@@ -76,24 +99,31 @@ describe('integration/engine', () => {
       createProject: vi.fn().mockResolvedValue({ id: 'lp_1', name: 'Alpha Project' }),
       createLabel: vi.fn().mockResolvedValue({ id: 'll_1', name: 'Bug' }),
       createDocument: vi.fn().mockResolvedValue({ id: 'ldoc_1', title: 'Knowledge Article' }),
-      createWorkflowState: vi.fn().mockResolvedValue({ id: 'ls_custom', name: '👾 В работе', type: 'started' }),
-      updateWorkflowState: vi.fn().mockResolvedValue({ id: 'ls_started', name: '👾 В работе', type: 'started' }),
+      createWorkflowState: vi
+        .fn()
+        .mockResolvedValue({ id: 'ls_custom', name: '👾 В работе', type: 'started' }),
+      updateWorkflowState: vi
+        .fn()
+        .mockResolvedValue({ id: 'ls_started', name: '👾 В работе', type: 'started' }),
       archiveWorkflowState: vi.fn().mockResolvedValue(undefined),
-      createIssue: vi.fn()
+      createIssue: vi
+        .fn()
         .mockResolvedValueOnce({ id: 'li_1', identifier: 'ENG-1', title: 'Parent Task' })
         .mockResolvedValueOnce({ id: 'li_2', identifier: 'ENG-2', title: 'Child Task' }),
       updateIssue: vi.fn().mockResolvedValue(undefined),
       subscribeUser: vi.fn().mockResolvedValue(undefined),
+      createComment: vi.fn().mockResolvedValue({ id: 'lc_1', issueId: 'li_1', body: '...' }),
     } as unknown as LinearClient;
 
     const engine = new MigrationEngine(mockWeeek, mockLinear, stateManager);
 
-    // Запуск миграции с наблюдателями, документами и созданием статусов
+    // Запуск миграции с наблюдателями, документами, созданием статусов и комментариями
     const { summary } = await engine.run({
       linearTeamKey: 'ENG',
       includeDocuments: true,
       createMissingStates: true,
       watcherStrategy: 'secondary_assignees',
+      commentStrategy: 'text_only',
     });
 
     expect(summary.projects.created).toBe(1);
@@ -101,8 +131,13 @@ describe('integration/engine', () => {
     expect(summary.documents.created).toBe(0);
     expect(summary.tasks.created).toBe(2);
     expect(summary.tasks.parentsResolved).toBe(1);
+    expect(summary.comments?.created).toBe(1);
     expect(stateManager.isTaskMigrated('wtk_1')).toBe(true);
     expect(stateManager.isTaskMigrated('wtk_2')).toBe(true);
+    expect(stateManager.isCommentMigrated('wcm_1')).toBe(true);
+
+    // Проверяем вызов создания комментария Linear
+    expect(mockLinear.createComment).toHaveBeenCalled();
 
     // Проверяем вызов подписки на задачу
     expect(mockLinear.subscribeUser).toHaveBeenCalledWith('li_1', 'lu_2');
@@ -111,12 +146,26 @@ describe('integration/engine', () => {
     const secondRun = await engine.run({
       linearTeamKey: 'ENG',
       syncStrategy: 'skip',
+      commentStrategy: 'text_only',
     });
 
     expect(secondRun.summary.projects.skipped).toBe(1);
     expect(secondRun.summary.tasks.skipped).toBe(2);
     expect(secondRun.summary.documents.skipped).toBe(0);
     expect(secondRun.summary.tasks.created).toBe(0);
+    expect(secondRun.summary.comments?.skipped).toBe(1);
+    expect(secondRun.summary.comments?.created).toBe(0);
+
+    // Проверка повторного запуска со стратегией update_comments_only
+    const commentsOnlyRun = await engine.run({
+      linearTeamKey: 'ENG',
+      syncStrategy: 'update_comments_only',
+      commentStrategy: 'mapped_authors',
+    });
+    expect(commentsOnlyRun.summary.tasks.created).toBe(0);
+    expect(commentsOnlyRun.summary.tasks.updated).toBe(0);
+    expect(commentsOnlyRun.summary.tasks.skipped).toBe(2);
+    expect(commentsOnlyRun.summary.comments?.skipped).toBe(1);
 
     // Проверка повторного запуска со стратегией update_status_only
     const thirdRun = await engine.run({
@@ -140,14 +189,5 @@ describe('integration/engine', () => {
       recreateAllColumns: true,
     });
     expect(mockLinear.createWorkflowState).toHaveBeenCalled();
-
-    // Проверка повторного запуска со стратегией update_comments_only: поля задач пропускаются
-    const commentsOnlyRun = await engine.run({
-      linearTeamKey: 'ENG',
-      syncStrategy: 'update_comments_only',
-    });
-    expect(commentsOnlyRun.summary.tasks.skipped).toBe(2);
-    expect(commentsOnlyRun.summary.tasks.updated).toBe(0);
-    expect(commentsOnlyRun.summary.tasks.created).toBe(0);
   });
 });
