@@ -278,12 +278,44 @@ export class ApiRouter {
     if (pathname === '/api/weeek/users' && method === 'GET') {
       try {
         const token = url.searchParams.get('token') || getAppConfig().WEEEK_API_TOKEN;
+        const projectIdsParam =
+          url.searchParams.get('projectIds') || url.searchParams.get('projectId');
         if (!token) {
           this.sendJson(res, 400, { error: t('server.weeekTokenRequired') });
           return true;
         }
         const client = new WeeekClient({ apiToken: token });
         const users = await client.getUsers();
+        const userIds = new Set(users.map(u => String(u.id)));
+
+        // Если переданы projectIds, дополнительно сканируем авторов задач
+        if (projectIdsParam) {
+          const pIds = projectIdsParam
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+          for (const pid of pIds) {
+            try {
+              const tasks = await client.getTasks({ projectId: pid, perPage: 50 });
+              for (const task of tasks) {
+                const authorId = task.creatorId || task.userId;
+                if (authorId && !userIds.has(String(authorId))) {
+                  userIds.add(String(authorId));
+                  users.push({
+                    id: String(authorId),
+                    name: `Автор задач #${String(authorId).slice(0, 8)}`,
+                    email: '',
+                    avatarUrl: null,
+                    role: 'task_author',
+                  });
+                }
+              }
+            } catch {
+              // Игнорируем ошибки при сканировании
+            }
+          }
+        }
+
         this.sendJson(res, 200, { users });
       } catch (err) {
         this.sendJson(res, 400, { error: (err as Error).message });
@@ -481,6 +513,15 @@ export class ApiRouter {
               customFieldsMapping: body.customFieldsMapping,
               ignoredCustomFields: body.ignoredCustomFields,
               unmatchedUserStrategy: body.unmatchedUserStrategy ?? 'unassigned',
+              fallbackAssignee: body.fallbackAssignee,
+              fallbackAssigneeUserId: body.fallbackAssigneeUserId,
+              creatorStrategy: body.creatorStrategy,
+              subscribeCommentAuthors: body.subscribeCommentAuthors,
+              commentFilterStrategy: body.commentFilterStrategy,
+              fallbackCommentAuthor: body.fallbackCommentAuthor,
+              fallbackCommentUserId: body.fallbackCommentUserId,
+              projectTeamMapping: body.projectTeamMapping,
+              routingRules: body.routingRules,
             });
 
             this.sseManager.broadcast({

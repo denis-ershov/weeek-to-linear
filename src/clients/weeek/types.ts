@@ -4,7 +4,10 @@ export interface WeeekUser {
   id: string;
   email: string;
   name: string;
-  avatarUrl?: string | null;
+  avatarUrl: string | null;
+  role?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 export interface WeeekProject {
@@ -73,6 +76,13 @@ export interface WeeekTask {
   assignees?: Array<string | { id?: string; email?: string; name?: string }>;
   tags?: Array<string | { id?: string; title?: string }>;
   customFields?: WeeekCustomField[];
+  creatorId?: string | null;
+  userId?: string | null;
+  author?: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
 }
 
 export interface WeeekTasksResponse {

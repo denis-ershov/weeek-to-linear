@@ -8,6 +8,11 @@ import type {
   SyncStrategy,
   CommentStrategy,
   CustomFieldsStrategy,
+  FallbackAssigneeStrategy,
+  CreatorStrategy,
+  CommentFilterStrategy,
+  FallbackCommentAuthorStrategy,
+  TaskRoutingRule,
 } from '../core/types.js';
 
 export interface ServerStatusResponse {
@@ -69,6 +74,15 @@ export interface StartMigrationRequest {
   customFieldsMapping?: Record<string, string>;
   ignoredCustomFields?: string[];
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
+  fallbackAssignee?: FallbackAssigneeStrategy;
+  fallbackAssigneeUserId?: string;
+  creatorStrategy?: CreatorStrategy;
+  subscribeCommentAuthors?: boolean;
+  commentFilterStrategy?: CommentFilterStrategy;
+  fallbackCommentAuthor?: FallbackCommentAuthorStrategy;
+  fallbackCommentUserId?: string;
+  projectTeamMapping?: Record<string, string>;
+  routingRules?: TaskRoutingRule[];
 }
 
 /**

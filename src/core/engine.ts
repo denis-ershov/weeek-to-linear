@@ -480,6 +480,11 @@ export class MigrationEngine {
       customFieldsStrategy: options.customFieldsStrategy ?? 'append_to_description',
       customFieldsMapping: options.customFieldsMapping,
       ignoredCustomFields: options.ignoredCustomFields,
+      weeekUsers,
+      fallbackAssignee: options.fallbackAssignee,
+      fallbackAssigneeUserId: options.fallbackAssigneeUserId,
+      creatorStrategy: options.creatorStrategy,
+      routingRules: options.routingRules,
     };
 
     let processedTasksCount = 0;
@@ -499,8 +504,13 @@ export class MigrationEngine {
         ? this.stateManager.getLinearProjectId(task.projectId)
         : undefined;
 
+      // Определение целевой команды с учетом Project-to-Team маршрутизации
+      const targetTeamId =
+        (task.projectId && options.projectTeamMapping?.[task.projectId]) || targetTeam.id;
+
       const taskContext: MappingContext = {
         ...mappingContext,
+        teamId: targetTeamId,
         linearProjectId,
         tasksStateMap: this.stateManager.getState().tasks,
       };
@@ -632,9 +642,23 @@ export class MigrationEngine {
         if (u.email) linearUserMap.set(u.email.toLowerCase(), u);
       }
 
+      const isSystemComment = (text: string): boolean => {
+        const lower = text.trim().toLowerCase();
+        return (
+          lower.startsWith('статус изменен') ||
+          lower.startsWith('дедлайн изменен') ||
+          lower.startsWith('срок изменен') ||
+          lower.startsWith('колонка изменена') ||
+          lower.startsWith('добавлен исполнитель') ||
+          lower.startsWith('удален исполнитель') ||
+          lower.startsWith('перемещено в') ||
+          lower.includes('автоматическое действие')
+        );
+      };
+
       const resolveCommentAuthor = (
         comment: WeeekComment,
-      ): { authorName: string; createAsUser?: string } => {
+      ): { authorName: string; createAsUser?: string; targetLinearUserId?: string } => {
         let authorName = comment.author?.name?.trim();
         const authorEmail = comment.author?.email?.trim().toLowerCase();
         const authorId = comment.authorId || comment.author?.id;
@@ -652,35 +676,59 @@ export class MigrationEngine {
           authorName = authorEmail || (authorId ? `WEEEK User #${authorId}` : 'WEEEK User');
         }
 
-        if (commentStrategy === 'mapped_authors') {
-          let targetLinearUserId: string | undefined;
-          if (authorId && options.userMapping?.[String(authorId)]) {
-            const mappedVal = options.userMapping[String(authorId)];
-            if (mappedVal && mappedVal !== 'unassigned' && mappedVal !== 'skip') {
-              targetLinearUserId = mappedVal;
-            }
+        let targetLinearUserId: string | undefined;
+        if (authorId && options.userMapping?.[String(authorId)]) {
+          const mappedVal = options.userMapping[String(authorId)];
+          if (mappedVal && mappedVal !== 'unassigned' && mappedVal !== 'skip') {
+            targetLinearUserId = mappedVal;
           }
-          if (!targetLinearUserId && authorEmail) {
-            const lUser = linearUserMap.get(authorEmail);
-            if (lUser) targetLinearUserId = lUser.id;
-          }
+        }
+        if (!targetLinearUserId && authorEmail) {
+          const lUser = linearUserMap.get(authorEmail);
+          if (lUser) targetLinearUserId = lUser.id;
+        }
 
+        // Fallback для комментариев
+        if (
+          !targetLinearUserId &&
+          options.fallbackCommentAuthor === 'specific_user' &&
+          options.fallbackCommentUserId
+        ) {
+          targetLinearUserId = options.fallbackCommentUserId;
+        }
+
+        if (options.fallbackCommentAuthor === 'bot_label' && !targetLinearUserId) {
+          authorName = 'WEEEK Bot';
+        }
+
+        const canUseCreateAsUser = Boolean(this.linearClient.canUseCreateAsUser?.());
+
+        if (commentStrategy === 'mapped_authors') {
           if (targetLinearUserId) {
             const linearUser = linearUserMap.get(targetLinearUserId);
             const displayAuthorName = linearUser?.name || authorName;
-            return { authorName: displayAuthorName, createAsUser: displayAuthorName };
+            return {
+              authorName: displayAuthorName,
+              createAsUser: canUseCreateAsUser ? displayAuthorName : undefined,
+              targetLinearUserId,
+            };
           }
 
-          return { authorName, createAsUser: authorName };
+          return {
+            authorName,
+            createAsUser: canUseCreateAsUser ? authorName : undefined,
+            targetLinearUserId,
+          };
         }
 
-        return { authorName };
+        return { authorName, targetLinearUserId };
       };
 
       const formatCommentBody = (
         comment: WeeekComment,
         authorName: string,
         strategy: CommentStrategy,
+        targetLinearUserId?: string,
       ): string => {
         const dateStr = comment.createdAt
           ? new Date(comment.createdAt).toLocaleString(getLocale() === 'ru' ? 'ru-RU' : 'en-US', {
@@ -693,11 +741,22 @@ export class MigrationEngine {
           : null;
 
         const rawText = comment.text.trim();
+        const canUseCreateAsUser = Boolean(this.linearClient.canUseCreateAsUser?.());
 
-        if (strategy === 'text_only') {
+        // Если text_only ИЛИ токен не поддерживает режим OAuth actor=app (Personal API Key),
+        // имя автора обязательно отображается в шапке комментария Markdown
+        if (strategy === 'text_only' || !canUseCreateAsUser) {
+          let authorDisplay = authorName;
+          if (targetLinearUserId) {
+            const lUser = linearUserMap.get(targetLinearUserId);
+            if (lUser?.name && lUser.name !== authorName) {
+              authorDisplay = `${authorName} (${lUser.name})`;
+            }
+          }
+
           const header = dateStr
-            ? `> 💬 **${authorName}** _(${dateStr})_:`
-            : `> 💬 **${authorName}**:`;
+            ? `> 💬 **${authorDisplay}** _(${dateStr})_:`
+            : `> 💬 **${authorDisplay}**:`;
           return `${header}\n\n${rawText}`;
         } else {
           if (dateStr) {
@@ -732,6 +791,15 @@ export class MigrationEngine {
               task.title,
             );
 
+            // Фильтрация системных комментариев
+            if (
+              options.commentFilterStrategy === 'exclude_system' &&
+              isSystemComment(comment.text)
+            ) {
+              summary.comments.skipped++;
+              continue;
+            }
+
             if (this.stateManager.isCommentMigrated(comment.id)) {
               summary.comments.skipped++;
               continue;
@@ -743,8 +811,14 @@ export class MigrationEngine {
             }
 
             try {
-              const { authorName, createAsUser } = resolveCommentAuthor(comment);
-              const body = formatCommentBody(comment, authorName, commentStrategy);
+              const { authorName, createAsUser, targetLinearUserId } =
+                resolveCommentAuthor(comment);
+              const body = formatCommentBody(
+                comment,
+                authorName,
+                commentStrategy,
+                targetLinearUserId,
+              );
 
               const createdLinearComment = await this.linearClient.createComment({
                 issueId: linearIssueId,
@@ -754,6 +828,15 @@ export class MigrationEngine {
 
               this.stateManager.recordComment(comment.id, createdLinearComment.id, task.id);
               summary.comments.created++;
+
+              // Автоматическая подписка комментатора на задачу в Linear
+              if (options.subscribeCommentAuthors && targetLinearUserId) {
+                try {
+                  await this.linearClient.subscribeUser(linearIssueId, targetLinearUserId);
+                } catch {
+                  // Игнорируем ошибку дублирующей подписки
+                }
+              }
             } catch (commentErr) {
               summary.comments.failed++;
               const errorRecord = {

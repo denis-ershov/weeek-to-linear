@@ -51,6 +51,13 @@ export interface I18nDictionary {
       unmatchedUser: string;
       columnMapping: string;
       userMapping: string;
+      fallbackAssignee: string;
+      fallbackAssigneeUser: string;
+      creatorStrategy: string;
+      subscribeCommentAuthors: string;
+      excludeSystemComments: string;
+      projectTeamMapping: string;
+      routingRules: string;
       lang: string;
       port: string;
       noOpen: string;

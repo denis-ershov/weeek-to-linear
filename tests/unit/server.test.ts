@@ -45,6 +45,22 @@ describe('server/server & ApiRouter Full Suite', () => {
     expect(resJs.headers.get('content-type')).toContain('application/javascript');
   });
 
+  it('должен отдавать favicon.svg и logo.svg с корректным Content-Type', async () => {
+    const resFavicon = await fetch(`${serverUrl}/favicon.svg`);
+    expect(resFavicon.status).toBe(200);
+    expect(resFavicon.headers.get('content-type')).toContain('image/svg+xml');
+    const svgFavicon = await resFavicon.text();
+    expect(svgFavicon).toContain('<svg');
+    expect(svgFavicon).toContain('qb-fav-stroke');
+
+    const resLogo = await fetch(`${serverUrl}/logo.svg`);
+    expect(resLogo.status).toBe(200);
+    expect(resLogo.headers.get('content-type')).toContain('image/svg+xml');
+    const svgLogo = await resLogo.text();
+    expect(svgLogo).toContain('<svg');
+    expect(svgLogo).toContain('WEEEK');
+  });
+
   it('должен возвращать 400 на POST /api/auth/test без токенов', async () => {
     const res = await fetch(`${serverUrl}/api/auth/test`, {
       method: 'POST',

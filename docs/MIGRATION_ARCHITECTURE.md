@@ -138,5 +138,68 @@
 ### Стратегии повторного запуска (Sync Strategy)
 
 - `skip`: пропуск уже перенесенных задач (по умолчанию).
-- `update_all`: полное обновление названия, описания, статуса, приоритета, дедлайна и исполнителя.
+- `update_all`: полное обновление названия, описания, статуса, приоритета, дедлайна, комментариев и исполнителя.
 - `update_status_only`: обновление только статуса, дедлайна и приоритета (сохраняя пользовательские правки в Linear).
+- `update_comments_only`: обновление исключительно комментариев без перезаписи полей задач.
+
+---
+
+## 5. Гибкий движок маршрутизации (Flexible Routing Engine)
+
+### 5.1. Маршрутизация пользователей и создателей задач (User & Role Routing)
+
+- **Fallback Assignee (`fallbackAssignee`)**:
+  - `unassigned`: задача создается без исполнителя (по умолчанию);
+  - `creator`: если исполнитель не указан, исполнителем становится автор задачи из WEEEK (при наличии сопоставления в Linear);
+  - `specific_user`: назначение конкретного дефолтного сотрудника Linear (`fallbackAssigneeUserId`).
+- **Атрибуция авторов задач (`creatorStrategy`)**:
+  - `header`: включение блока цитаты в начале описания (`> 👤 **Создатель задачи (WEEEK):** ...`);
+  - `subscriber`: добавление сопоставленного автора задачи в наблюдатели (`subscribers`);
+  - `both`: цитата в описании + добавление в наблюдатели Linear;
+  - `none`: отключение дополнительного учета автора.
+
+### 5.2. Маршрутизация комментариев (Comment Routing Engine)
+
+- **Режимы авторизации Linear API (Personal API Key vs OAuth App)**:
+  - Согласно официальной документации Linear API (`https://linear.app/developers/oauth-actor-authorization`), мутации `commentCreate` с атрибутом `createAsUser` разрешены **только** в режиме `OAuth actor=app`.
+  - При использовании стандартного **Personal API Key** (`lin_api_*`) передача `createAsUser` запрещена и возвращает ошибку `createAsUser used without OAuth actor=app mode`.
+  - `LinearClient` автоматически определяет тип токена (`!apiToken.startsWith('lin_api_')`) и метод `canUseCreateAsUser()`. Для Personal API Key вызов `createAsUser` блокируется, а автор комментария и привязанный аккаунт Linear гарантированно включаются в Markdown-шапку:
+    `> 💬 **Andrey Dobryy** (Linear: Andrey Dobryy) _(04.09.2026, 18:27)_:`
+  - Если запрос с `createAsUser` отклоняется Linear API, срабатывает мгновенный безотказный **fallback** (создание комментария без `createAsUser` с сохранением автора в тексте) с автоматическим переключением клиента в стандартный режим для последующих комментариев.
+- **Предотвращение зависаний ретраев (`withRetry`)**:
+  - Ошибки несовместимости прав и режимов авторизации Linear (`actor=app`, `createAsUser`) помечены как фатальные (non-retryable), что исключает 20-секундные задержки и блокировку конвейера.
+- **Автоподписка авторов комментариев (`subscribeCommentAuthors`)**:
+  - При переносе комментария сопоставленный автор автоматически добавляется в список подписчиков задачи (`linearClient.subscribeUser(issueId, targetUserId)`).
+  - Позволяет участникам дискуссии в WEEEK продолжать получать уведомления об ответах в Linear.
+- **Фильтрация системных комментариев (`commentFilterStrategy: exclude_system`)**:
+  - Автоматический отсев технических сообщений (изменение статусов, сроков, ответственных), чтобы не засорять историю обсуждений в Linear.
+- **Резервный автор комментариев (`fallbackCommentAuthor`)**:
+  - `use_name`: вывод оригинального имени автора из WEEEK в заголовке комментария;
+  - `specific_user`: привязка всех несопоставленных комментариев к выбранному сотруднику Linear (`fallbackCommentUserId`);
+  - `bot_label`: отправка от имени `WEEEK Bot`.
+
+### 5.3. Маршрутизация проектов в команды Linear (`projectTeamMapping`)
+
+- Возможность индивидуального сопоставления каждого проекта WEEEK с отдельной целевой командой Linear (`Record<weeekProjectId, linearTeamId>`).
+
+### 5.4. Условные правила маршрутизации (Task Routing Rules)
+
+Декларативные правила, применяемые в процессе преобразования задач `mapTask`:
+
+```ts
+interface TaskRoutingRule {
+  id: string;
+  condition: {
+    field: 'tag' | 'column' | 'priority' | 'assignee';
+    operator: 'equals' | 'contains';
+    value: string;
+  };
+  action: {
+    setAssigneeId?: string;
+    addSubscriberId?: string;
+    addLabelId?: string;
+    setPriority?: number;
+    targetTeamId?: string;
+  };
+}
+```

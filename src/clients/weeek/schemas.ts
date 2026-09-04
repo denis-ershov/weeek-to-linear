@@ -1,22 +1,49 @@
 import { z } from 'zod';
 import { normalizeDocumentContentToMarkdown } from '../../utils/markdown.js';
 
-export const WeeekUserSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
-  email: z
-    .string()
-    .nullish()
-    .transform(v => v?.trim() || ''),
-  name: z
-    .string()
-    .nullish()
-    .transform(v => v?.trim() || '')
-    .default(''),
-  avatarUrl: z
-    .string()
-    .nullish()
-    .transform(v => (v ? String(v) : null)),
-});
+export const WeeekUserSchema = z.preprocess(
+  (raw: unknown) => {
+    if (typeof raw !== 'object' || raw === null) return raw;
+    const r = raw as Record<string, unknown>;
+    const firstName = typeof r.firstName === 'string' ? r.firstName.trim() : '';
+    const lastName = typeof r.lastName === 'string' ? r.lastName.trim() : '';
+    const rawName = typeof r.name === 'string' ? r.name.trim() : '';
+    const combinedName = [firstName, lastName].filter(Boolean).join(' ') || rawName;
+
+    const email = typeof r.email === 'string' ? r.email.trim() : '';
+    const avatar = r.avatarUrl || r.logoLink || r.logo || null;
+    const role = r.roleType || r.role || null;
+
+    return {
+      ...r,
+      name: combinedName || email || '',
+      email,
+      avatarUrl: avatar ? String(avatar) : null,
+      role: role ? String(role) : null,
+      firstName: firstName || null,
+      lastName: lastName || null,
+    };
+  },
+  z.object({
+    id: z.union([z.string(), z.number()]).transform(String),
+    email: z
+      .string()
+      .nullish()
+      .transform(v => v?.trim() || ''),
+    name: z
+      .string()
+      .nullish()
+      .transform(v => v?.trim() || '')
+      .default(''),
+    avatarUrl: z
+      .string()
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    role: z.string().nullish(),
+    firstName: z.string().nullish(),
+    lastName: z.string().nullish(),
+  }),
+);
 
 export const WeeekProjectSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
@@ -270,6 +297,24 @@ export const WeeekTaskSchema = z.preprocess(
       .nullish()
       .transform(val => (Array.isArray(val) ? val : []))
       .default([]),
+    creatorId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    userId: z
+      .union([z.string(), z.number()])
+      .nullish()
+      .transform(v => (v ? String(v) : null)),
+    author: z
+      .object({
+        id: z
+          .union([z.string(), z.number()])
+          .nullish()
+          .transform(v => (v ? String(v) : null)),
+        name: z.string().nullish(),
+        email: z.string().nullish(),
+      })
+      .nullish(),
   }),
 );
 

@@ -84,8 +84,12 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
     factor: options?.factor ?? 2,
     randomize: true, // Добавление джиттера для предотвращения лавинообразных запросов
     onFailedAttempt: error => {
-      // Если ошибка фатальная (401, 403 и т.д.), прекращаем retry
-      if (error instanceof ApiError && error.isFatal) {
+      // Если ошибка фатальная (401, 403 и т.д. или несовместимость режима авторизации API), прекращаем retry
+      const isFatalAuthOrSchemaError =
+        Boolean(error.message?.includes('actor=app')) ||
+        Boolean(error.message?.includes('createAsUser'));
+
+      if ((error instanceof ApiError && error.isFatal) || isFatalAuthOrSchemaError) {
         logger.debug(tf('logs.retry.fatalError', error.message));
         throw error;
       }

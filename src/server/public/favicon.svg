@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="qb-fav-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#151722"/>
+      <stop offset="100%" stop-color="#0A0B10"/>
+    </linearGradient>
+    <linearGradient id="qb-fav-border" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF6B2B" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#A855F7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#5E6AD2" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="qb-fav-stroke" x1="12" y1="24" x2="36" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF7A30"/>
+      <stop offset="28%" stop-color="#FF3864"/>
+      <stop offset="65%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="qb-fav-glow" cx="24" cy="24" r="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Squircle Canvas Base -->
+  <rect width="48" height="48" rx="12" fill="url(#qb-fav-bg)"/>
+  <circle cx="24" cy="24" r="20" fill="url(#qb-fav-glow)"/>
+  <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" fill="none" stroke="url(#qb-fav-border)" stroke-width="1.5"/>
+
+  <!-- Continuous Quantum Bridge Mark: WEEEK -> Linear -->
+  <path d="M12 17L16.5 31L21 21L25.5 31L36 17" stroke="url(#qb-fav-stroke)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Linear Velocity Arrow Tip -->
+  <path d="M30 17H36V23" stroke="#818CF8" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

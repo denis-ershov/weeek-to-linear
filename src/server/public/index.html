@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WEEEK → Linear Migration Tool</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -14,13 +15,42 @@
     <!-- Header -->
     <header class="app-header">
       <div class="brand">
-        <div class="brand-logo">
-          <span class="brand-w">W</span>
-          <span class="brand-arrow">→</span>
-          <span class="brand-l">L</span>
+        <div class="brand-logo" aria-hidden="true">
+          <svg class="brand-mark-svg" width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="header-logo-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#151722"/>
+                <stop offset="100%" stop-color="#0A0B10"/>
+              </linearGradient>
+              <linearGradient id="header-logo-border" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FF6B2B" stop-opacity="0.8"/>
+                <stop offset="50%" stop-color="#A855F7" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#5E6AD2" stop-opacity="0.8"/>
+              </linearGradient>
+              <linearGradient id="header-logo-stroke" x1="12" y1="24" x2="36" y2="20" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FF7A30"/>
+                <stop offset="28%" stop-color="#FF3864"/>
+                <stop offset="65%" stop-color="#7C3AED"/>
+                <stop offset="100%" stop-color="#6366F1"/>
+              </linearGradient>
+              <radialGradient id="header-logo-glow" cx="24" cy="24" r="20" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <rect width="48" height="48" rx="12" fill="url(#header-logo-bg)"/>
+            <circle cx="24" cy="24" r="20" fill="url(#header-logo-glow)"/>
+            <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" fill="none" stroke="url(#header-logo-border)" stroke-width="1.5"/>
+            <path d="M12 17L16.5 31L21 21L25.5 31L36 17" stroke="url(#header-logo-stroke)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M30 17H36V23" stroke="#818CF8" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
         <div class="brand-info">
-          <h1>WEEEK → Linear</h1>
+          <h1>
+            <span class="brand-name-weeek">WEEEK</span>
+            <span class="brand-name-arrow" aria-hidden="true">→</span>
+            <span class="brand-name-linear">Linear</span>
+          </h1>
           <span class="badge badge-version">v0.4.0</span>
         </div>
       </div>
@@ -65,7 +95,7 @@
     </nav>
 
     <!-- Notification / Alert Banner -->
-    <div id="alert-banner" class="alert hidden" role="alert">
+    <div id="alert-banner" class="alert hidden" role="alert" aria-live="assertive">
       <div class="alert-icon" id="alert-icon"></div>
       <div class="alert-content" id="alert-text"></div>
       <button class="alert-close" id="btn-alert-close" data-i18n-aria="alert.close" aria-label="Закрыть уведомление">✕</button>
@@ -232,12 +262,39 @@
             </div>
           </div>
 
-          <!-- 2. User & Assignee Mapping -->
+          <!-- 2. User & Role Routing -->
           <div class="card">
             <div class="card-header">
-              <h3 data-i18n="step3.userMappingTitle">Исполнители (User Mapping &amp; Fallback)</h3>
+              <h3 data-i18n="step3.userMappingTitle">Маршрутизация пользователей и ролей (User &amp; Role Routing)</h3>
             </div>
-            <p class="form-help margin-bottom-sm" data-i18n="step3.userMappingHint">Укажите, кому назначать задачи, если пользователь не найден:</p>
+
+            <!-- Fallback Assignee Selector -->
+            <div class="form-group margin-bottom-sm">
+              <label for="select-fallback-assignee" data-i18n="step3.fallbackAssigneeTitle">Дефолтный исполнитель (Fallback Assignee):</label>
+              <select id="select-fallback-assignee" class="custom-select">
+                <option value="unassigned" selected data-i18n="step3.fallbackUnassigned">Оставить без исполнителя (Unassigned)</option>
+                <option value="creator" data-i18n="step3.fallbackCreator">Назначить автора задачи (если сопоставлен)</option>
+                <option value="specific_user" data-i18n="step3.fallbackSpecific">Назначить конкретного сотрудника Linear...</option>
+              </select>
+            </div>
+            <div id="group-fallback-user" class="form-group hidden margin-bottom-sm">
+              <select id="select-fallback-user" class="custom-select">
+                <option value="" data-i18n="step3.fallbackUserPlaceholder">Выберите дефолтного сотрудника Linear...</option>
+              </select>
+            </div>
+
+            <!-- Creator Strategy Selector -->
+            <div class="form-group margin-bottom-sm">
+              <label for="select-creator-strategy" data-i18n="step3.creatorStrategyTitle">Создатели задач (Creator Attribution):</label>
+              <select id="select-creator-strategy" class="custom-select">
+                <option value="header" selected data-i18n="step3.creatorHeader">Цитата с автором в описании задачи (рекомендуется)</option>
+                <option value="subscriber" data-i18n="step3.creatorSubscriber">Добавлять автора в наблюдатели (Subscribers)</option>
+                <option value="both" data-i18n="step3.creatorBoth">Цитата в описании + Добавить в наблюдатели</option>
+                <option value="none" data-i18n="step3.creatorNone">Не учитывать автора</option>
+              </select>
+            </div>
+
+            <p class="form-help margin-bottom-sm" data-i18n="step3.userMappingHint">Персональное сопоставление пользователей WEEEK с сотрудниками Linear (для задач, исполнителей и авторов комментариев):</p>
             <div id="users-mapping-container" class="mapping-list">
               <!-- Динамический список пользователей WEEEK -->
               <div class="skeleton-line"></div>
@@ -341,6 +398,39 @@
                     <span><strong data-i18n="step3.commentNone">Не переносить</strong> <span data-i18n="step3.commentNoneDesc">(пропустить комментарии)</span></span>
                   </label>
                 </div>
+
+                <div class="margin-top-xs">
+                  <label class="switch-control">
+                    <input type="checkbox" id="opt-subscribe-comment-authors" checked>
+                    <span class="switch-slider"></span>
+                    <div class="switch-label">
+                      <span class="switch-title" data-i18n="step3.commentSubscribeAuthors">Автоматически подписывать авторов комментариев на задачу в Linear</span>
+                      <span class="switch-desc" data-i18n="step3.commentSubscribeAuthorsDesc">Участники обсуждения продолжат получать уведомления при ответах в Linear</span>
+                    </div>
+                  </label>
+                  <label class="switch-control margin-top-xs">
+                    <input type="checkbox" id="opt-exclude-system-comments" checked>
+                    <span class="switch-slider"></span>
+                    <div class="switch-label">
+                      <span class="switch-title" data-i18n="step3.commentExcludeSystem">Исключать системные автосообщения WEEEK</span>
+                      <span class="switch-desc" data-i18n="step3.commentExcludeSystemDesc">Отфильтрует технические сообщения "статус изменен", "дедлайн перенесен"</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="form-group margin-top-sm" id="group-fallback-comment-author">
+                  <label for="select-fallback-comment-author" data-i18n="step3.fallbackCommentAuthorTitle">Резервный автор комментариев (если автор не сопоставлен):</label>
+                  <select id="select-fallback-comment-author" class="custom-select">
+                    <option value="use_name" selected data-i18n="step3.fallbackCommentUseName">Указывать имя текстом в цитате</option>
+                    <option value="specific_user" data-i18n="step3.fallbackCommentSpecific">Назначить конкретного сотрудника Linear...</option>
+                    <option value="bot_label" data-i18n="step3.fallbackCommentBot">Помечать как бот WEEEK</option>
+                  </select>
+                </div>
+                <div id="group-fallback-comment-user" class="form-group hidden margin-top-xs">
+                  <select id="select-fallback-comment-user" class="custom-select">
+                    <option value="" data-i18n="step3.fallbackUserPlaceholder">Выберите сотрудника Linear...</option>
+                  </select>
+                </div>
               </div>
 
               <div class="form-group margin-top-sm">
@@ -360,6 +450,20 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- 5. Task Routing Rules Accordion -->
+        <div class="card margin-top-md">
+          <div class="card-header flex-between">
+            <div>
+              <h3 data-i18n="step3.rulesTitle">Правила маршрутизации задач (Task Routing Rules)</h3>
+              <p class="form-help" data-i18n="step3.rulesSubtitle">Автоматическое назначение исполнителей, меток и наблюдателей по условиям задачи</p>
+            </div>
+            <button id="btn-add-routing-rule" class="btn btn-secondary btn-small" data-i18n="step3.rulesAdd">+ Добавить правило</button>
+          </div>
+          <div id="routing-rules-container" class="routing-rules-list">
+            <p class="text-secondary text-sm" id="empty-routing-rules-hint" data-i18n="step3.rulesEmpty">Нет активных правил маршрутизации. Нажмите "+ Добавить правило" для создания.</p>
           </div>
         </div>
 
@@ -524,7 +628,7 @@
     <div class="modal-card">
       <div class="modal-header">
         <h3 data-i18n="about.modalTitle">О сервисе WEEEK → Linear</h3>
-        <button id="btn-close-about-modal" type="button" class="modal-close-btn">&times;</button>
+        <button id="btn-close-about-modal" type="button" class="modal-close-btn" aria-label="Закрыть окно" data-i18n-aria="alert.close">&times;</button>
       </div>
       <div class="modal-body">
         <p data-i18n="about.modalDesc">Профессиональный инструмент переноса проектов, задач, многоуровневых подзадач, документов и структуры из WEEEK в Linear.</p>

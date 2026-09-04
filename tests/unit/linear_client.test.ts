@@ -192,7 +192,7 @@ describe('clients/linear/client (Full Suite)', () => {
     });
   });
 
-  it('должен создавать комментарий к задаче Linear (createComment)', async () => {
+  it('должен безопасно создавать комментарий для Personal API Key (пропуская createAsUser во избежание actor=app ошибок)', async () => {
     const comment = await client.createComment({
       issueId: 'iss_1',
       body: 'Test comment content',
@@ -203,9 +203,51 @@ describe('clients/linear/client (Full Suite)', () => {
     expect(mockSdkInstance.createComment).toHaveBeenCalledWith({
       issueId: 'iss_1',
       body: 'Test comment content',
+      createAsUser: undefined,
+      displayIconUrl: undefined,
+    });
+  });
+
+  it('должен передавать createAsUser для токена с поддержкой OAuth actor=app', async () => {
+    const oauthClient = new LinearClient({
+      apiToken: 'oauth_token_123',
+      supportsActorApp: true,
+    });
+    const comment = await oauthClient.createComment({
+      issueId: 'iss_1',
+      body: 'OAuth comment content',
+      createAsUser: 'Denis Author',
+    });
+    expect(comment.id).toBe('com_1');
+    expect(mockSdkInstance.createComment).toHaveBeenCalledWith({
+      issueId: 'iss_1',
+      body: 'OAuth comment content',
       createAsUser: 'Denis Author',
       displayIconUrl: undefined,
     });
+  });
+
+  it('должен перехватывать ошибку createAsUser actor=app mode и выполнять fallback без потери автора', async () => {
+    const oauthClient = new LinearClient({
+      apiToken: 'oauth_token_invalid_app',
+      supportsActorApp: true,
+    });
+
+    mockSdkInstance.createComment
+      .mockRejectedValueOnce(new Error('`createAsUser` used without OAuth `actor=app` mode'))
+      .mockResolvedValueOnce({
+        comment: Promise.resolve({ id: 'com_fallback', body: '> 💬 **Denis Author**:\n\nFallback comment' }),
+      });
+
+    const comment = await oauthClient.createComment({
+      issueId: 'iss_1',
+      body: 'Fallback comment',
+      createAsUser: 'Denis Author',
+    });
+
+    expect(comment.id).toBe('com_fallback');
+    expect(oauthClient.canUseCreateAsUser()).toBe(false);
+    expect(mockSdkInstance.createComment).toHaveBeenCalledTimes(2);
   });
 
   it('должен подписывать пользователя как наблюдателя (subscribeUser)', async () => {

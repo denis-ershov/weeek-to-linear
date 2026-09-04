@@ -141,24 +141,55 @@ export class WeeekClient {
    * Получение списка пользователей рабочего пространства WEEEK
    */
   async getUsers(): Promise<WeeekUser[]> {
-    const endpoints = ['/ws/users', '/tm/users', '/user/members'];
+    const endpoints = [
+      '/ws/members',
+      '/workspace/members',
+      '/ws/users',
+      '/tm/users',
+      '/user/members',
+    ];
     for (const endpoint of endpoints) {
       try {
         const data = await this.request<Record<string, unknown>>(endpoint);
         const usersList =
+          (data as { members?: unknown[] })?.members ||
           (data as { users?: unknown[] })?.users ||
           (data as { data?: { users?: unknown[] } })?.data?.users ||
+          (data as { data?: { members?: unknown[] } })?.data?.members ||
           (data as { data?: unknown[] })?.data ||
-          (data as { members?: unknown[] })?.members ||
           (Array.isArray(data) ? data : []);
 
         if (Array.isArray(usersList) && usersList.length > 0) {
-          return z.array(WeeekUserSchema).parse(usersList);
+          const parsedUsers = z.array(WeeekUserSchema).parse(usersList);
+          try {
+            const me = await this.getMe();
+            if (
+              me &&
+              !parsedUsers.some(
+                u =>
+                  u.id === me.id ||
+                  (u.email && me.email && u.email.toLowerCase() === me.email.toLowerCase()),
+              )
+            ) {
+              parsedUsers.push(me);
+            }
+          } catch {
+            // Игнорируем
+          }
+          return parsedUsers;
         }
       } catch {
         // Пробуем следующий эндпоинт
       }
     }
+
+    try {
+      const me = await this.getMe();
+      if (me) return [me];
+    } catch {
+      // Игнорируем
+    }
+
     logger.debug(t('logs.weeekClient.usersNotFound'));
     return [];
   }

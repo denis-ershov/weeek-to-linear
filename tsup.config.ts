@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export default defineConfig({
   entry: {
@@ -14,5 +16,13 @@ export default defineConfig({
   shims: true,
   banner: {
     js: '#!/usr/bin/env node',
+  },
+  onSuccess: async () => {
+    const srcDir = path.resolve('src/server/public');
+    const destDir = path.resolve('dist/server/public');
+    if (fs.existsSync(srcDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+      fs.cpSync(srcDir, destDir, { recursive: true });
+    }
   },
 });

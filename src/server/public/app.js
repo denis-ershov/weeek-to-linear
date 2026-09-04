@@ -25,6 +25,7 @@
     boardColumns: [],
     boardColumnMapping: {}, // weeekColId -> linearStateId
     userMapping: {}, // weeekUserId -> linearUserId | 'unassigned' | 'skip'
+    routingRules: [], // TaskRoutingRule[]
     isMigrationRunning: false,
     sseSource: null,
     counters: {
@@ -78,6 +79,19 @@
   const optCompleted = document.getElementById('opt-completed');
   const btnStartMigration = document.getElementById('btn-start-migration');
   const btnStartText = document.getElementById('btn-start-text');
+
+  // Step 3 Routing Elements
+  const selectFallbackAssignee = document.getElementById('select-fallback-assignee');
+  const groupFallbackUser = document.getElementById('group-fallback-user');
+  const selectFallbackUser = document.getElementById('select-fallback-user');
+  const selectCreatorStrategy = document.getElementById('select-creator-strategy');
+  const optSubscribeCommentAuthors = document.getElementById('opt-subscribe-comment-authors');
+  const optExcludeSystemComments = document.getElementById('opt-exclude-system-comments');
+  const selectFallbackCommentAuthor = document.getElementById('select-fallback-comment-author');
+  const groupFallbackCommentUser = document.getElementById('group-fallback-comment-user');
+  const selectFallbackCommentUser = document.getElementById('select-fallback-comment-user');
+  const btnAddRoutingRule = document.getElementById('btn-add-routing-rule');
+  const routingRulesContainer = document.getElementById('routing-rules-container');
 
   // Step 4 Elements
   const liveStageBadge = document.getElementById('live-stage-badge');
@@ -386,7 +400,9 @@
         fetch(
           `/api/linear/states?token=${encodeURIComponent(state.linearToken)}&teamId=${state.selectedTeamId || state.selectedTeamKey}`,
         ),
-        fetch(`/api/weeek/users?token=${encodeURIComponent(state.weeekToken)}`),
+        fetch(
+          `/api/weeek/users?token=${encodeURIComponent(state.weeekToken)}${selectedProjectIds ? `&projectIds=${encodeURIComponent(selectedProjectIds)}` : ''}`,
+        ),
         fetch(`/api/linear/users?token=${encodeURIComponent(state.linearToken)}`),
       ]);
 
@@ -405,6 +421,9 @@
       renderBoardColumnsMapping();
       renderUsersMapping();
       renderGlobalWatcherSelector();
+      renderFallbackUserSelector();
+      renderFallbackCommentUserSelector();
+      renderRoutingRules();
     } catch (err) {
       showAlert(err.message, 'error');
     }
@@ -575,14 +594,34 @@
       });
 
       const rawName = wUser.name && wUser.name !== 'Пользователь' ? wUser.name : '';
-      const displayName = rawName || window.i18n.t('step3.defaultUserName');
-      const avatarChar = (rawName || displayName || 'U').charAt(0).toUpperCase();
+      const displayName =
+        rawName ||
+        [wUser.firstName, wUser.lastName].filter(Boolean).join(' ') ||
+        wUser.email ||
+        window.i18n.t('step3.defaultUserName');
+      const avatarChar = displayName.charAt(0).toUpperCase() || 'U';
+
+      const avatarMarkup = wUser.avatarUrl
+        ? `<img src="${escapeHtml(wUser.avatarUrl)}" alt="${escapeHtml(displayName)}" class="user-avatar-mini-img" onerror="this.outerHTML='<div class=\\'user-avatar-mini\\'>${avatarChar}</div>'">`
+        : `<div class="user-avatar-mini">${avatarChar}</div>`;
+
+      let roleBadge = '';
+      if (wUser.role === 'super_admin') {
+        roleBadge = `<span class="badge badge-subtle badge-admin" title="Владелец рабочего пространства">${window.i18n.t('step3.userRoleSuperAdmin') || 'Владелец'}</span>`;
+      } else if (wUser.role === 'admin') {
+        roleBadge = `<span class="badge badge-subtle badge-admin" title="Администратор">${window.i18n.t('step3.userRoleAdmin') || 'Администратор'}</span>`;
+      } else if (wUser.role === 'task_author') {
+        roleBadge = `<span class="badge badge-subtle" title="Автор задач или комментариев">${window.i18n.t('step3.userRoleTaskAuthor') || 'Автор задач/комментов'}</span>`;
+      }
 
       item.innerHTML = `
         <div class="user-info-left">
-          <div class="user-avatar-mini">${avatarChar}</div>
+          ${avatarMarkup}
           <div>
-            <strong>${escapeHtml(displayName)}</strong>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <strong>${escapeHtml(displayName)}</strong>
+              ${roleBadge}
+            </div>
             <div class="text-secondary" style="font-size: 11px;">${escapeHtml(wUser.email || window.i18n.t('step3.noEmail'))}</div>
           </div>
         </div>
@@ -619,6 +658,153 @@
     } else {
       groupGlobalWatcher.classList.add('hidden');
     }
+  });
+
+  function renderFallbackUserSelector() {
+    if (!selectFallbackUser) return;
+    const currentVal = selectFallbackUser.value;
+    selectFallbackUser.innerHTML = `<option value="">${window.i18n.t('step3.fallbackUserPlaceholder')}</option>`;
+    state.linearUsers.forEach(lu => {
+      const opt = document.createElement('option');
+      opt.value = lu.id;
+      opt.textContent = `${lu.name} (${lu.email})`;
+      if (lu.id === currentVal) opt.selected = true;
+      selectFallbackUser.appendChild(opt);
+    });
+  }
+
+  selectFallbackAssignee?.addEventListener('change', () => {
+    if (selectFallbackAssignee.value === 'specific_user') {
+      groupFallbackUser?.classList.remove('hidden');
+    } else {
+      groupFallbackUser?.classList.add('hidden');
+    }
+  });
+
+  function renderFallbackCommentUserSelector() {
+    if (!selectFallbackCommentUser) return;
+    const currentVal = selectFallbackCommentUser.value;
+    selectFallbackCommentUser.innerHTML = `<option value="">${window.i18n.t('step3.fallbackCommentUserPlaceholder') || 'Выберите сотрудника Linear...'}</option>`;
+    state.linearUsers.forEach(lu => {
+      const opt = document.createElement('option');
+      opt.value = lu.id;
+      opt.textContent = `${lu.name} (${lu.email})`;
+      if (lu.id === currentVal) opt.selected = true;
+      selectFallbackCommentUser.appendChild(opt);
+    });
+  }
+
+  selectFallbackCommentAuthor?.addEventListener('change', () => {
+    if (selectFallbackCommentAuthor.value === 'specific_user') {
+      groupFallbackCommentUser?.classList.remove('hidden');
+    } else {
+      groupFallbackCommentUser?.classList.add('hidden');
+    }
+  });
+
+  function renderRoutingRules() {
+    if (!routingRulesContainer) return;
+    routingRulesContainer.innerHTML = '';
+
+    if (!state.routingRules || state.routingRules.length === 0) {
+      const emptyP = document.createElement('p');
+      emptyP.className = 'text-secondary text-sm';
+      emptyP.id = 'empty-routing-rules-hint';
+      emptyP.textContent = window.i18n.t('step3.rulesEmpty');
+      routingRulesContainer.appendChild(emptyP);
+      return;
+    }
+
+    state.routingRules.forEach((rule, idx) => {
+      const item = document.createElement('div');
+      item.className = 'routing-rule-item';
+
+      let userOptions = `<option value="">--</option>`;
+      state.linearUsers.forEach(lu => {
+        const isSel = rule.action.setAssigneeId === lu.id || rule.action.addSubscriberId === lu.id;
+        userOptions += `<option value="${lu.id}" ${isSel ? 'selected' : ''}>${escapeHtml(lu.name)} (${escapeHtml(lu.email)})</option>`;
+      });
+
+      const currentActionType =
+        rule.action.addSubscriberId !== undefined ? 'addSubscriberId' : 'setAssigneeId';
+
+      item.innerHTML = `
+        <div class="rule-condition-row">
+          <span class="rule-badge">${window.i18n.t('step3.ruleIf')}</span>
+          <select class="custom-select rule-field-select" data-idx="${idx}">
+            <option value="tag" ${rule.condition.field === 'tag' ? 'selected' : ''}>${window.i18n.t('step3.ruleTag')}</option>
+            <option value="column" ${rule.condition.field === 'column' ? 'selected' : ''}>${window.i18n.t('step3.ruleColumn')}</option>
+            <option value="priority" ${rule.condition.field === 'priority' ? 'selected' : ''}>${window.i18n.t('step3.rulePriority')}</option>
+          </select>
+          <select class="custom-select rule-op-select" data-idx="${idx}">
+            <option value="contains" ${rule.condition.operator === 'contains' ? 'selected' : ''}>${window.i18n.t('step3.ruleContains')}</option>
+            <option value="equals" ${rule.condition.operator === 'equals' ? 'selected' : ''}>${window.i18n.t('step3.ruleEquals')}</option>
+          </select>
+          <input type="text" class="custom-input rule-val-input" data-idx="${idx}" value="${escapeHtml(rule.condition.value)}" placeholder="значение..." />
+        </div>
+        <div class="rule-action-row">
+          <span class="rule-badge rule-badge-action">${window.i18n.t('step3.ruleThen')}</span>
+          <select class="custom-select rule-action-type-select" data-idx="${idx}">
+            <option value="setAssigneeId" ${currentActionType === 'setAssigneeId' ? 'selected' : ''}>${window.i18n.t('step3.ruleSetAssignee')}</option>
+            <option value="addSubscriberId" ${currentActionType === 'addSubscriberId' ? 'selected' : ''}>${window.i18n.t('step3.ruleAddWatcher')}</option>
+          </select>
+          <select class="custom-select rule-target-user-select" data-idx="${idx}">
+            ${userOptions}
+          </select>
+          <button type="button" class="btn btn-ghost btn-danger-ghost btn-small btn-delete-rule" data-idx="${idx}" title="${window.i18n.t('step3.ruleDelete')}">✕</button>
+        </div>
+      `;
+
+      item.querySelector('.rule-field-select').addEventListener('change', e => {
+        state.routingRules[idx].condition.field = e.target.value;
+      });
+      item.querySelector('.rule-op-select').addEventListener('change', e => {
+        state.routingRules[idx].condition.operator = e.target.value;
+      });
+      item.querySelector('.rule-val-input').addEventListener('input', e => {
+        state.routingRules[idx].condition.value = e.target.value;
+      });
+      item.querySelector('.rule-action-type-select').addEventListener('change', e => {
+        const actionType = e.target.value;
+        const currentVal =
+          state.routingRules[idx].action.setAssigneeId ||
+          state.routingRules[idx].action.addSubscriberId ||
+          '';
+        state.routingRules[idx].action = {};
+        if (currentVal) {
+          state.routingRules[idx].action[actionType] = currentVal;
+        }
+      });
+      item.querySelector('.rule-target-user-select').addEventListener('change', e => {
+        const selVal = e.target.value;
+        const actionType = item.querySelector('.rule-action-type-select').value;
+        state.routingRules[idx].action = {};
+        if (selVal) {
+          state.routingRules[idx].action[actionType] = selVal;
+        }
+      });
+      item.querySelector('.btn-delete-rule').addEventListener('click', () => {
+        state.routingRules.splice(idx, 1);
+        renderRoutingRules();
+      });
+
+      routingRulesContainer.appendChild(item);
+    });
+  }
+
+  btnAddRoutingRule?.addEventListener('click', () => {
+    state.routingRules.push({
+      id: 'rule_' + Date.now(),
+      condition: {
+        field: 'tag',
+        operator: 'contains',
+        value: '',
+      },
+      action: {
+        setAssigneeId: '',
+      },
+    });
+    renderRoutingRules();
   });
 
   function updateDryRunButtonText() {
@@ -740,6 +926,24 @@
       ignoredCustomFields: ignoredCustomFields.length > 0 ? ignoredCustomFields : undefined,
       weeekProjectId:
         state.selectedProjectIds.size === 1 ? Array.from(state.selectedProjectIds)[0] : undefined,
+      fallbackAssignee: selectFallbackAssignee?.value || 'unassigned',
+      fallbackAssigneeUserId: selectFallbackUser?.value || undefined,
+      creatorStrategy: selectCreatorStrategy?.value || 'header',
+      subscribeCommentAuthors: optSubscribeCommentAuthors
+        ? optSubscribeCommentAuthors.checked
+        : true,
+      commentFilterStrategy:
+        optExcludeSystemComments && optExcludeSystemComments.checked ? 'exclude_system' : 'all',
+      fallbackCommentAuthor: selectFallbackCommentAuthor?.value || 'use_name',
+      fallbackCommentUserId: selectFallbackCommentUser?.value || undefined,
+      routingRules: state.routingRules.filter(
+        r =>
+          r.condition.value &&
+          (r.action.setAssigneeId ||
+            r.action.addSubscriberId ||
+            r.action.addLabelId ||
+            r.action.setPriority !== undefined),
+      ),
     };
 
     try {

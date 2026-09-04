@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="240" height="48" fill="none">
+  <defs>
+    <linearGradient id="logo-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#151722"/>
+      <stop offset="100%" stop-color="#0A0B10"/>
+    </linearGradient>
+    <linearGradient id="logo-border" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF6B2B" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#A855F7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#5E6AD2" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="logo-stroke" x1="12" y1="24" x2="36" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF7A30"/>
+      <stop offset="28%" stop-color="#FF3864"/>
+      <stop offset="65%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="logo-glow" cx="24" cy="24" r="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linear-text" x1="135" y1="12" x2="200" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5B4FC"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Quantum Bridge Emblem (48x48) -->
+  <g transform="translate(0, 0)">
+    <rect width="48" height="48" rx="12" fill="url(#logo-bg)"/>
+    <circle cx="24" cy="24" r="20" fill="url(#logo-glow)"/>
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" fill="none" stroke="url(#logo-border)" stroke-width="1.5"/>
+
+    <path d="M12 17L16.5 31L21 21L25.5 31L36 17" stroke="url(#logo-stroke)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M30 17H36V23" stroke="#818CF8" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Typography Brand Lockup -->
+  <g transform="translate(62, 0)">
+    <!-- Primary Title -->
+    <text x="0" y="24" font-family="'Inter', -apple-system, sans-serif" font-size="16" font-weight="700" fill="#F4F5F8" letter-spacing="-0.3">
+      <tspan fill="#FF8F50">WEEEK</tspan>
+      <tspan fill="#A855F7" dx="3"> → </tspan>
+      <tspan fill="url(#linear-text)" dx="3">LINEAR</tspan>
+    </text>
+
+    <!-- Subtitle Badge -->
+    <text x="0" y="38" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="500" fill="#8A99AD" letter-spacing="1.2">
+      MIGRATION ENGINE
+    </text>
+  </g>
+</svg>

@@ -274,4 +274,42 @@ describe('clients/weeek/client', () => {
     const deleted = await client.deleteTaskComment('2001', '1005');
     expect(deleted).toBe(true);
   });
+
+  it('getUsers() должен успешно получать участников из /ws/members и объединять имя', async () => {
+    const mockMembersResponse = {
+      success: true,
+      members: [
+        {
+          id: 'user-1',
+          email: 'andrey@dobryy.com',
+          firstName: 'Andrey',
+          lastName: 'Dobryy',
+          roleType: 'admin',
+          logo: null,
+        },
+        {
+          id: 'user-2',
+          email: 'denis@example.com',
+          firstName: 'Денис',
+          lastName: 'Ершов',
+          roleType: 'super_admin',
+          logo: 'https://storage.weeek.net/avatar.png',
+        },
+      ],
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockMembersResponse,
+    });
+
+    const users = await client.getUsers();
+    expect(users).toHaveLength(2);
+    expect(users[0]?.name).toBe('Andrey Dobryy');
+    expect(users[0]?.role).toBe('admin');
+    expect(users[1]?.name).toBe('Денис Ершов');
+    expect(users[1]?.role).toBe('super_admin');
+    expect(users[1]?.avatarUrl).toBe('https://storage.weeek.net/avatar.png');
+  });
 });

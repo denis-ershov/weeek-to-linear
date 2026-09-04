@@ -6,8 +6,64 @@
 
 ## [0.4.0] - 2026-09-04
 
-### Добавлено
-
+- **Устранение сбоя Linear API `createAsUser used without OAuth actor=app mode` при переносе комментариев**:
+  - В соответствии со спецификацией Linear API (`https://linear.app/developers/oauth-actor-authorization`) Personal API Keys (`lin_api_*`) не поддерживают режим `OAuth actor=app` и атрибут `createAsUser`;
+  - В [`src/clients/linear/client.ts`](file:///e:/DEV/Project/weeek-to-linear/src/clients/linear/client.ts) внедрено автоматическое определение типа токена: для Personal API Keys передача `createAsUser` блокируется, а при возникновении ошибки от Linear API срабатывает мгновенный безотказный fallback без потери автора;
+  - В [`src/core/engine.ts`](file:///e:/DEV/Project/weeek-to-linear/src/core/engine.ts) обновлено формирование комментариев: при использовании Personal API Key имя сопоставленного автора и ссылка/привязка аккуратно оформляются в шапке Markdown-цитаты, а сопоставленный участник Linear автоматически подписывается на задачу через `subscribeUser`;
+  - В [`src/utils/retry.ts`](file:///e:/DEV/Project/weeek-to-linear/src/utils/retry.ts) добавлен запрет бесполезных повторных запросов (retry) для фатальных ошибок несовместимости режимов авторизации (`actor=app`, `createAsUser`), устраняя 20-секундные задержки на каждый комментарий;
+  - Добавлены модульные тесты для Personal API Key, OAuth и fallback в [`tests/unit/linear_client.test.ts`](file:///e:/DEV/Project/weeek-to-linear/tests/unit/linear_client.test.ts).
+- **Исправление загрузки пользователей WEEEK и сопоставления авторов комментариев**:
+  - В клиенте WEEEK [`src/clients/weeek/client.ts`](file:///e:/DEV/Project/weeek-to-linear/src/clients/weeek/client.ts) исправлен запрос получения участников рабочего пространства — внедрен актуальный эндпоинт WEEEK API `/ws/members` с дедупликацией и объединением с `getMe()`;
+  - В схеме [`src/clients/weeek/schemas.ts`](file:///e:/DEV/Project/weeek-to-linear/src/clients/weeek/schemas.ts) и типах [`src/clients/weeek/types.ts`](file:///e:/DEV/Project/weeek-to-linear/src/clients/weeek/types.ts) реализована поддержка полей `firstName`, `lastName`, `logo`, `logoLink`, `roleType`, что обеспечивает корректное отображение полных имён участников («Денис Ершов», «Andrey Dobryy»), аватаров и бейджей ролей (Владелец / Администратор);
+  - На сервере [`src/server/routes.ts`](file:///e:/DEV/Project/weeek-to-linear/src/server/routes.ts) роут `/api/weeek/users` дополнен автообнаружением авторов задач и комментариев по проектам (`projectIds`);
+  - В Web UI [`src/server/public/index.html`](file:///e:/DEV/Project/weeek-to-linear/src/server/public/index.html) и [`src/server/public/app.js`](file:///e:/DEV/Project/weeek-to-linear/src/server/public/app.js) добавлены элементы управления дефолтным автором комментариев (`Fallback Comment Author` $\rightarrow$ `specific_user` / `use_name` / `bot_label`), выбор сотрудника Linear для несопоставленных комментариев и явные подсказки в блоке маппинга;
+  - Добавлены модульные тесты в [`tests/unit/weeek_client.test.ts`](file:///e:/DEV/Project/weeek-to-linear/tests/unit/weeek_client.test.ts) для проверки `/ws/members` и нормализации профилей пользователей.
+- **Фирменный стиль, векторный логотип и Favicon («Quantum Bridge — Neon Portal»)**:
+  - Создан векторный знак высокой четкости [`src/server/public/favicon.svg`](file:///e:/DEV/Project/weeek-to-linear/src/server/public/favicon.svg) на базе калиброванной палитры «Neon Portal» (`#FF7A30` $\rightarrow$ `#FF3864` $\rightarrow$ `#7C3AED` $\rightarrow$ `#6366F1` / `#818CF8`);
+  - Создан полноразмерный векторный горизонтальный логотип с гармоничной типографикой [`src/server/public/logo.svg`](file:///e:/DEV/Project/weeek-to-linear/src/server/public/logo.svg);
+  - Подключен `<link rel="icon" type="image/svg+xml" href="favicon.svg">` в [`src/server/public/index.html`](file:///e:/DEV/Project/weeek-to-linear/src/server/public/index.html);
+  - Обновлена шапка Web UI: заменена текстовая плашка на интерактивную SVG-эмблему `.brand-logo` с деликатным неоновым свечением при наведении и градиентным заголовком;
+  - Добавлена мобильная адаптация шапки для компактных экранов ($\le 640$ px, iPhone SE 375px);
+  - Настроен хук `onSuccess` в [`tsup.config.ts`](file:///e:/DEV/Project/weeek-to-linear/tsup.config.ts) для надежной автоматической репликации ассетов Web UI в `dist/server/public` при `pnpm build`;
+  - Добавлены модульные тесты в [`tests/unit/server.test.ts`](file:///e:/DEV/Project/weeek-to-linear/tests/unit/server.test.ts) для валидации раздачи SVG-ассетов с `Content-Type: image/svg+xml`.
+- **Многоуровневый гибкий движок маршрутизации (Flexible Routing Engine)**:
+  - **Маршрутизация пользователей и ролей (User & Role Routing)**:
+    - Стратегии дефолтного исполнителя (`fallbackAssignee`):
+      - `unassigned` (по умолчанию): оставлять задачу без исполнителя;
+      - `creator`: автоматически назначать задачу её автору из WEEEK (если сопоставлен в Linear);
+      - `specific_user`: назначать выбранному сотруднику Linear (`fallbackAssigneeUserId`).
+    - Атрибуция авторов задач (`creatorStrategy`):
+      - `header`: цитатный блок в Markdown описании (`> 👤 **Создатель задачи (WEEEK):** ...`);
+      - `subscriber`: автоматическое добавление автора задачи в подписчики (Subscribers) в Linear;
+      - `both`: цитата в описании + добавление в подписчики;
+      - `none`: отключение учета автора.
+  - **Маршрутизация комментариев (Comment Routing Engine)**:
+    - Автоподписка авторов комментариев (`subscribeCommentAuthors`): все сопоставленные авторы комментариев WEEEK подписываются на задачу в Linear через мутацию `subscribeUser`, чтобы получать уведомления при ответах;
+    - Фильтрация системных автосообщений WEEEK (`commentFilterStrategy: exclude_system`): автоматическое отсечение технических записей изменений статуса, дедлайнов и исполнителей;
+    - Стратегия резервного автора (`fallbackCommentAuthor`: `use_name` | `specific_user` | `bot_label`).
+  - **Маршрутизация проектов в команды Linear (`projectTeamMapping`)**:
+    - Индивидуальная привязка каждого проекта WEEEK к отдельной команде Linear в рамках единой миграции.
+  - **Условные правила маршрутизации задач (Task Routing Rules)**:
+    - Конструктор декларативных правил с условиями по полям `tag`, `column`, `priority`, `assignee` (операторы `equals`, `contains`);
+    - Действия правил: `setAssigneeId`, `addSubscriberId`, `addLabelId`, `setPriority`, `targetTeamId`.
+  - **Обновление Web UI и Mobile First UX**:
+    - Новый блок «Маршрутизация пользователей и ролей» с динамическим показом выбора дефолтного сотрудника;
+    - Чекбоксы автоподписки авторов комментариев и фильтрации системных комментариев;
+    - Интерактивный конструктор правил маршрутизации с добавлением/удалением строк и сохранением в payload;
+    - Адаптивная верстка (Mobile First) с сенсорными областями $\ge 44 \times 44$ px и адаптивным карточным представлением на мобильных экранах.
+  - **Аудит UI/UX Pro Max и Design System (`/ui-ux-pro-max`, `/design`)**:
+    - Сгенерирована и зафиксирована спецификация дизайн-системы [`design-system/weeek-to-linear-migration-tool/MASTER.md`](file:///e:/DEV/Project/weeek-to-linear/design-system/weeek-to-linear-migration-tool/MASTER.md);
+    - Реализована полноценная поддержка доступности `:focus-visible` для навигации с клавиатуры на всех интерактивных элементах (кнопки, селекторы, радиокнопки, карточки);
+    - Внедрена поддержка медиа-запроса `@media (prefers-reduced-motion: reduce)` (WCAG 2.1 Criterion 2.3.3);
+    - Добавлены плавные скелетон-шиммеры (`.skeleton-card`, `.skeleton-line`) для состояний ожидания данных;
+    - Улучшена доступность `#alert-banner` (`aria-live="assertive"`) и модального окна About (`aria-label` для кнопок закрытия);
+    - Добавлено визуальное выделение активных радиокнопок через `.radio-label:has(input:checked)`.
+  - **Расширение CLI и интернационализации (CLI & i18n)**:
+    - Добавлены флаги: `--fallback-assignee`, `--fallback-assignee-user`, `--creator-strategy`, `--subscribe-comment-authors`, `--no-subscribe-comment-authors`, `--exclude-system-comments`, `--no-exclude-system-comments`, `--project-team-mapping`, `--routing-rules`;
+    - Добавлены ключи локализации в `ru.ts`, `en.ts`, `types.ts`, `i18n.js`.
+  - **Тестирование (Testing)**:
+    - Создан тестовый набор `tests/unit/routing.test.ts` (11 тестов): проверка всех стратегий Fallback Assignee, Creator Attribution, Task Routing Rules;
+    - Общее число тестов проекта выросло до 91 (17 сьютов), 100% успешное прохождение.
 - **Поддержка миграции комментариев к задачам (Task Comments Migration)**:
   - Интеграция с новыми официальными эндпоинтами WEEEK Public API (релиз от 26 августа 2026):
     - `GET /public/v1/tm/tasks/{taskId}/comments` — получение комментариев задачи с автоматической пагинацией (`limit=100`, `offset`, `hasMore`).

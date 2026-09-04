@@ -3,14 +3,23 @@ import type {
   LinearPriority,
   WatcherStrategy,
   CustomFieldsStrategy,
+  FallbackAssigneeStrategy,
+  CreatorStrategy,
+  TaskRoutingRule,
 } from './types.js';
-import type { WeeekTask, WeeekProject, WeeekCustomField } from '../clients/weeek/types.js';
+import type {
+  WeeekTask,
+  WeeekProject,
+  WeeekCustomField,
+  WeeekUser,
+} from '../clients/weeek/types.js';
 import type {
   LinearWorkflowState,
   LinearUser,
   CreateIssueInput,
   CreateProjectInput,
 } from '../clients/linear/types.js';
+import { CONSTANTS } from '../config/constants.js';
 import { formatLinearDueDate } from '../utils/dates.js';
 import { normalizeDescriptionToMarkdown } from '../utils/markdown.js';
 import { tf } from '../i18n/index.js';
@@ -30,6 +39,11 @@ export interface MappingContext {
   customFieldsStrategy?: CustomFieldsStrategy;
   customFieldsMapping?: Record<string, string>;
   ignoredCustomFields?: string[];
+  weeekUsers?: WeeekUser[];
+  fallbackAssignee?: FallbackAssigneeStrategy;
+  fallbackAssigneeUserId?: string;
+  creatorStrategy?: CreatorStrategy;
+  routingRules?: TaskRoutingRule[];
 }
 
 export interface TaskMappingResult {
@@ -356,8 +370,6 @@ export function mapProject(weeekProject: WeeekProject, teamId: string): CreatePr
   };
 }
 
-import { CONSTANTS } from '../config/constants.js';
-
 /**
  * Форматирование кастомных полей WEEEK в Markdown блок для описания задачи Linear
  */
@@ -444,7 +456,7 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     context.boardColumnMapping,
   );
 
-  // 4. Исполнитель
+  // 4. Исполнитель (Assignee)
   let assigneeId: string | undefined;
   const firstAssignee =
     Array.isArray(weeekTask.assignees) && weeekTask.assignees.length > 0
@@ -477,6 +489,71 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     }
   }
 
+  // 4.1. Резолвинг автора задачи (Creator / Author Attribution)
+  const creatorRaw = weeekTask.creatorId || weeekTask.userId || weeekTask.author;
+  let creatorDisplayName: string | undefined;
+  let creatorLinearUserId: string | undefined;
+
+  if (weeekTask.author && typeof weeekTask.author === 'object' && weeekTask.author.name) {
+    creatorDisplayName = weeekTask.author.name;
+  }
+
+  if (creatorRaw) {
+    if (!creatorDisplayName && typeof creatorRaw === 'object' && creatorRaw !== null) {
+      const authObj = creatorRaw as {
+        id?: string | null;
+        name?: string | null;
+        email?: string | null;
+      };
+      creatorDisplayName = authObj.name || authObj.email || authObj.id || undefined;
+    } else if (!creatorDisplayName && context.weeekUsers && typeof creatorRaw === 'string') {
+      const foundWUser = context.weeekUsers.find(
+        u => u.id === creatorRaw || u.email.toLowerCase() === creatorRaw.toLowerCase(),
+      );
+      if (foundWUser) {
+        creatorDisplayName = foundWUser.name || foundWUser.email;
+      }
+    }
+
+    const creatorMatch = resolveAssignee(creatorRaw, context.linearUsers, context.userMapping);
+    if (creatorMatch.assigneeId) {
+      creatorLinearUserId = creatorMatch.assigneeId;
+      if (!creatorDisplayName) {
+        const linUser = context.linearUsers.find(u => u.id === creatorMatch.assigneeId);
+        if (linUser) creatorDisplayName = linUser.name || linUser.email;
+      }
+    }
+  }
+
+  // 4.2. Применение Fallback Assignee при отсутствии назначенного исполнителя
+  if (!assigneeId) {
+    if (context.fallbackAssignee === 'creator' && creatorLinearUserId) {
+      assigneeId = creatorLinearUserId;
+    } else if (context.fallbackAssignee === 'specific_user' && context.fallbackAssigneeUserId) {
+      const specificUser = context.linearUsers.find(
+        u =>
+          u.id === context.fallbackAssigneeUserId ||
+          u.email.toLowerCase() === context.fallbackAssigneeUserId?.toLowerCase(),
+      );
+      if (specificUser) {
+        assigneeId = specificUser.id;
+      }
+    }
+  }
+
+  // 4.3. Оформление атрибуции автора задачи (Creator Strategy)
+  const creatorStrategy = context.creatorStrategy || 'none';
+  if (
+    (creatorStrategy === 'header' || creatorStrategy === 'both') &&
+    (creatorDisplayName || creatorRaw)
+  ) {
+    const display =
+      creatorDisplayName ||
+      (typeof creatorRaw === 'string' ? creatorRaw : JSON.stringify(creatorRaw));
+    const creatorHeader = `> 👤 **Создатель задачи (WEEEK):** ${display}\n\n`;
+    description = description ? creatorHeader + description : creatorHeader.trimEnd();
+  }
+
   // 5. Наблюдатели (Subscribers)
   const subscriberUserIds = resolveSubscribers(
     weeekTask.assignees,
@@ -486,6 +563,16 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     context.globalWatcherUserId,
     assigneeId,
   );
+
+  // Добавление автора задачи в подписчики, если задана стратегия subscriber или both
+  if (
+    (creatorStrategy === 'subscriber' || creatorStrategy === 'both') &&
+    creatorLinearUserId &&
+    creatorLinearUserId !== assigneeId &&
+    !subscriberUserIds.includes(creatorLinearUserId)
+  ) {
+    subscriberUserIds.push(creatorLinearUserId);
+  }
 
   // 6. Метки (Labels)
   const labelIds: string[] = [];
@@ -509,7 +596,72 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
     }
   }
 
-  // 7. Родительская задача (Parent ID)
+  // 7. Применение условных правил маршрутизации (Task Routing Rules)
+  let effectivePriority = linearPriority;
+  let targetTeamId = context.teamId;
+
+  if (context.routingRules && context.routingRules.length > 0) {
+    for (const rule of context.routingRules) {
+      const { field, operator, value } = rule.condition;
+      let matched = false;
+      const normVal = value.trim().toLowerCase();
+
+      if (field === 'tag') {
+        const taskTags = Array.isArray(weeekTask.tags)
+          ? weeekTask.tags.map(t => (typeof t === 'string' ? t : t.title || '').toLowerCase())
+          : [];
+        if (operator === 'equals') {
+          matched = taskTags.some(t => t === normVal);
+        } else if (operator === 'contains') {
+          matched = taskTags.some(t => t.includes(normVal));
+        }
+      } else if (field === 'column') {
+        const taskCol = String(weeekTask.boardColumnId || weeekTask.columnId || '').toLowerCase();
+        if (operator === 'equals') {
+          matched = taskCol === normVal;
+        } else if (operator === 'contains') {
+          matched = taskCol.includes(normVal);
+        }
+      } else if (field === 'priority') {
+        const taskP = String(weeekTask.priority ?? 0);
+        matched = operator === 'equals' ? taskP === normVal : taskP.includes(normVal);
+      } else if (field === 'assignee') {
+        const assigneesList = Array.isArray(weeekTask.assignees)
+          ? weeekTask.assignees.map(a =>
+              (typeof a === 'string' ? a : a.email || a.id || '').toLowerCase(),
+            )
+          : [];
+        matched =
+          operator === 'equals'
+            ? assigneesList.includes(normVal)
+            : assigneesList.some(a => a.includes(normVal));
+      }
+
+      if (matched) {
+        if (rule.action.setAssigneeId) {
+          assigneeId = rule.action.setAssigneeId;
+        }
+        if (
+          rule.action.addSubscriberId &&
+          rule.action.addSubscriberId !== assigneeId &&
+          !subscriberUserIds.includes(rule.action.addSubscriberId)
+        ) {
+          subscriberUserIds.push(rule.action.addSubscriberId);
+        }
+        if (rule.action.addLabelId && !labelIds.includes(rule.action.addLabelId)) {
+          labelIds.push(rule.action.addLabelId);
+        }
+        if (rule.action.setPriority !== undefined) {
+          effectivePriority = rule.action.setPriority as LinearPriority;
+        }
+        if (rule.action.targetTeamId) {
+          targetTeamId = rule.action.targetTeamId;
+        }
+      }
+    }
+  }
+
+  // 8. Родительская задача (Parent ID)
   let parentId: string | undefined;
   if (weeekTask.parentId) {
     const parentRecord = context.tasksStateMap[String(weeekTask.parentId)];
@@ -519,10 +671,10 @@ export function mapTask(weeekTask: WeeekTask, context: MappingContext): TaskMapp
   }
 
   const createInput: CreateIssueInput = {
-    teamId: context.teamId,
+    teamId: targetTeamId,
     title: weeekTask.title.trim() || 'Без названия',
     description: description || undefined,
-    priority: linearPriority,
+    priority: effectivePriority,
     stateId,
     dueDate: dueDate || undefined,
     assigneeId,

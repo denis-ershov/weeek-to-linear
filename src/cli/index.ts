@@ -6,6 +6,7 @@ import { migrateCommand } from './commands/migrate.js';
 import { uiCommand } from './commands/ui.js';
 import { CONSTANTS } from '../config/constants.js';
 import { detectLocale, setLocale, t } from '../i18n/index.js';
+import type { TaskRoutingRule } from '../core/types.js';
 
 // Определяем язык ДО регистрации команд — чтобы описания были локализованы
 setLocale(detectLocale());
@@ -59,11 +60,22 @@ program
     '--ignore-custom-fields <list>',
     'Список имён или ID кастомных полей для пропуска (через запятую)',
   )
+  .option('--fallback-assignee <strategy>', t('cli.flags.fallbackAssignee'), 'unassigned')
+  .option('--fallback-assignee-user <userId>', t('cli.flags.fallbackAssigneeUser'))
+  .option('--creator-strategy <strategy>', t('cli.flags.creatorStrategy'), 'header')
+  .option('--subscribe-comment-authors', t('cli.flags.subscribeCommentAuthors'), true)
+  .option('--no-subscribe-comment-authors', 'Не подписывать авторов комментариев')
+  .option('--exclude-system-comments', t('cli.flags.excludeSystemComments'), true)
+  .option('--no-exclude-system-comments', 'Не исключать системные комментарии')
+  .option('--project-team-mapping <json>', t('cli.flags.projectTeamMapping'))
+  .option('--routing-rules <json>', t('cli.flags.routingRules'))
   .action(options => {
     let parsedColumnMapping: Record<string, string> | undefined;
     let parsedUserMapping: Record<string, string> | undefined;
     let parsedCustomFieldsMapping: Record<string, string> | undefined;
     let parsedIgnoreCustomFields: string[] | undefined;
+    let parsedProjectTeamMapping: Record<string, string> | undefined;
+    let parsedRoutingRules: TaskRoutingRule[] | undefined;
 
     if (options.columnMapping) {
       try {
@@ -86,6 +98,22 @@ program
         parsedCustomFieldsMapping = JSON.parse(options.customFieldsMapping);
       } catch {
         console.error(`${t('cli.migrate.jsonError')} --custom-fields-mapping`);
+      }
+    }
+
+    if (options.projectTeamMapping) {
+      try {
+        parsedProjectTeamMapping = JSON.parse(options.projectTeamMapping);
+      } catch {
+        console.error(`${t('cli.migrate.jsonError')} --project-team-mapping`);
+      }
+    }
+
+    if (options.routingRules) {
+      try {
+        parsedRoutingRules = JSON.parse(options.routingRules);
+      } catch {
+        console.error(`${t('cli.migrate.jsonError')} --routing-rules`);
       }
     }
 
@@ -118,6 +146,13 @@ program
       unmatchedUser: options.unmatchedUser,
       columnMapping: parsedColumnMapping,
       userMapping: parsedUserMapping,
+      fallbackAssignee: options.fallbackAssignee,
+      fallbackAssigneeUserId: options.fallbackAssigneeUser,
+      creatorStrategy: options.creatorStrategy,
+      subscribeCommentAuthors: options.subscribeCommentAuthors,
+      commentFilterStrategy: options.excludeSystemComments ? 'exclude_system' : 'all',
+      projectTeamMapping: parsedProjectTeamMapping,
+      routingRules: parsedRoutingRules,
     });
   });
 

@@ -50,6 +50,22 @@
   --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--border-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -99,24 +115,57 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  background: linear-gradient(135deg, #1A1D26, #232733);
-  padding: 6px 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  font-weight: 700;
-  font-size: 16px;
+  transition: transform var(--transition-normal), filter var(--transition-normal);
+  flex-shrink: 0;
 }
 
-.brand-w { color: var(--warning); }
-.brand-arrow { color: var(--text-muted); font-size: 14px; }
-.brand-l { color: var(--primary-hover); }
+.brand-logo:hover {
+  transform: translateY(-1px) scale(1.02);
+  filter: drop-shadow(0 4px 14px rgba(124, 58, 237, 0.35));
+}
+
+.brand-mark-svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+
+.brand-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
 
 .brand-info h1 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.3px;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-name-weeek {
+  color: #FF8F50;
+  letter-spacing: -0.2px;
+}
+
+.brand-name-arrow {
+  color: #A855F7;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.brand-name-linear {
+  background: linear-gradient(135deg, #A5B4FC, #717DF2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  letter-spacing: -0.2px;
 }
 
 .badge {
@@ -808,6 +857,29 @@ input:focus,
   flex-shrink: 0;
 }
 
+.user-avatar-mini-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+}
+
+.badge-subtle {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+.badge-admin {
+  background: rgba(94, 106, 210, 0.15);
+  color: #818CF8;
+  border-color: rgba(94, 106, 210, 0.3);
+}
+
 .radio-group {
   display: flex;
   flex-direction: column;
@@ -832,10 +904,24 @@ input:focus,
   border-color: var(--border-strong);
 }
 
+.radio-label:has(input[type="radio"]:checked) {
+  border-color: var(--primary);
+  background: rgba(94, 106, 210, 0.08);
+}
+
 .radio-label input[type="radio"] {
   accent-color: var(--primary);
   width: 16px;
   height: 16px;
+}
+
+.skeleton-card {
+  min-height: 120px;
+  background: linear-gradient(90deg, var(--bg-surface-elevated) 25%, var(--bg-surface-hover) 50%, var(--bg-surface-elevated) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
 }
 
 .skeleton-line {
@@ -1181,9 +1267,110 @@ input:focus,
 }
 
 /* ==============================================================================
+ * Routing Rules Styles
+ * ============================================================================== */
+.routing-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.routing-rule-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+  animation: fadeIn var(--transition-normal);
+}
+
+.routing-rule-item:hover {
+  border-color: var(--border-strong);
+}
+
+.rule-condition-row,
+.rule-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1 1 auto;
+}
+
+.rule-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  user-select: none;
+}
+
+.rule-badge-action {
+  background: var(--primary-glow);
+  color: var(--primary-hover);
+  border-color: rgba(94, 106, 210, 0.4);
+}
+
+.rule-val-input {
+  min-width: 120px;
+  flex: 1;
+}
+
+.rule-target-user-select {
+  min-width: 140px;
+  flex: 1;
+}
+
+.btn-danger-ghost {
+  color: var(--text-muted);
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+.btn-danger-ghost:hover {
+  color: var(--error);
+  background: var(--error-bg);
+}
+
+/* ==============================================================================
  * Mobile-First & Accessibility Hardening (@user_global rules 8-11, 16)
  * ============================================================================== */
 @media (max-width: 640px) {
+  /* Мобильная адаптивность шапки и логотипа */
+  .app-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .brand {
+    gap: var(--space-sm);
+  }
+
+  .brand-mark-svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-info h1 {
+    font-size: 16px;
+  }
+
   /* Правило 16: tap-targets не менее 44px */
   .btn,
   .form-input,
@@ -1193,6 +1380,27 @@ input:focus,
     min-height: 44px;
     display: flex;
     align-items: center;
+  }
+
+  /* Адаптивность для правил роутинга на узких экранах */
+  .routing-rule-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+  }
+
+  .rule-condition-row,
+  .rule-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-xs);
+    width: 100%;
+  }
+
+  .btn-delete-rule {
+    min-height: 44px;
+    width: 100%;
   }
 
   /* Правило 10-11: карточный вид вместо таблиц на мобильных устройствах */

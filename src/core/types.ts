@@ -117,6 +117,46 @@ export type CommentStrategy = 'none' | 'text_only' | 'mapped_authors';
 export type CustomFieldsStrategy = 'append_to_description' | 'none';
 
 /**
+ * Стратегии для дефолтного исполнителя (Fallback Assignee)
+ */
+export type FallbackAssigneeStrategy = 'unassigned' | 'creator' | 'specific_user';
+
+/**
+ * Стратегии маршрутизации создателя задачи (Creator Attribution)
+ */
+export type CreatorStrategy = 'none' | 'header' | 'subscriber' | 'both';
+
+/**
+ * Стратегии маршрутизации авторов комментариев
+ */
+export type FallbackCommentAuthorStrategy = 'use_name' | 'specific_user' | 'bot_label';
+
+/**
+ * Фильтрация комментариев при миграции
+ */
+export type CommentFilterStrategy = 'all' | 'exclude_system' | 'since_date';
+
+/**
+ * Правило условной маршрутизации задач
+ */
+export interface TaskRoutingRule {
+  id: string;
+  name?: string;
+  condition: {
+    field: 'tag' | 'column' | 'priority' | 'assignee';
+    operator: 'equals' | 'contains';
+    value: string;
+  };
+  action: {
+    setAssigneeId?: string;
+    addSubscriberId?: string;
+    addLabelId?: string;
+    setPriority?: number;
+    targetTeamId?: string;
+  };
+}
+
+/**
  * Конфигурация запуска миграции
  */
 export interface MigrationOptions {
@@ -142,6 +182,15 @@ export interface MigrationOptions {
   ignoredCustomFields?: string[]; // Массив ID или имён полей для пропуска
   logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
   unmatchedUserStrategy?: 'unassigned' | 'skip' | 'abort';
+  fallbackAssignee?: FallbackAssigneeStrategy;
+  fallbackAssigneeUserId?: string;
+  creatorStrategy?: CreatorStrategy;
+  subscribeCommentAuthors?: boolean;
+  commentFilterStrategy?: CommentFilterStrategy;
+  fallbackCommentAuthor?: FallbackCommentAuthorStrategy;
+  fallbackCommentUserId?: string;
+  projectTeamMapping?: Record<string, string>; // weeekProjectId -> linearTeamId
+  routingRules?: TaskRoutingRule[];
 }
 
 /**

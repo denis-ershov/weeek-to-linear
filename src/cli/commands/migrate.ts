@@ -5,7 +5,7 @@ import { WeeekClient } from '../../clients/weeek/client.js';
 import { LinearClient } from '../../clients/linear/client.js';
 import { StateManager } from '../../core/state.js';
 import { MigrationEngine } from '../../core/engine.js';
-import type { MigrationOptions } from '../../core/types.js';
+import type { MigrationOptions, TaskRoutingRule } from '../../core/types.js';
 import { theme, printBanner } from '../ui/theme.js';
 import { t } from '../../i18n/index.js';
 
@@ -31,6 +31,15 @@ export async function migrateCommand(cliOptions: {
   unmatchedUser?: 'unassigned' | 'skip' | 'abort';
   columnMapping?: Record<string, string>;
   userMapping?: Record<string, string>;
+  fallbackAssignee?: 'unassigned' | 'creator' | 'specific_user';
+  fallbackAssigneeUserId?: string;
+  creatorStrategy?: 'none' | 'header' | 'subscriber' | 'both';
+  subscribeCommentAuthors?: boolean;
+  commentFilterStrategy?: 'all' | 'exclude_system' | 'since_date';
+  fallbackCommentAuthor?: 'use_name' | 'specific_user' | 'bot_label';
+  fallbackCommentUserId?: string;
+  projectTeamMapping?: Record<string, string>;
+  routingRules?: TaskRoutingRule[];
 }): Promise<void> {
   printBanner();
   p.intro(theme.title(t('cli.migrate.intro')));
@@ -338,6 +347,15 @@ export async function migrateCommand(cliOptions: {
     watcherStrategy,
     globalWatcherUserId,
     unmatchedUserStrategy: cliOptions.unmatchedUser || 'unassigned',
+    fallbackAssignee: cliOptions.fallbackAssignee,
+    fallbackAssigneeUserId: cliOptions.fallbackAssigneeUserId,
+    creatorStrategy: cliOptions.creatorStrategy,
+    subscribeCommentAuthors: cliOptions.subscribeCommentAuthors,
+    commentFilterStrategy: cliOptions.commentFilterStrategy,
+    fallbackCommentAuthor: cliOptions.fallbackCommentAuthor,
+    fallbackCommentUserId: cliOptions.fallbackCommentUserId,
+    projectTeamMapping: cliOptions.projectTeamMapping,
+    routingRules: cliOptions.routingRules,
   };
 
   try {

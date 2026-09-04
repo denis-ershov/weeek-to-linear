@@ -27,11 +27,13 @@ import type {
 export interface LinearClientOptions {
   apiToken: string;
   queue?: PQueue;
+  supportsActorApp?: boolean;
 }
 
 export class LinearClient {
   private readonly sdk: SdkLinearClient;
   private readonly queue: PQueue;
+  private supportsActorApp: boolean;
 
   constructor(options: LinearClientOptions) {
     if (!options.apiToken) {
@@ -42,6 +44,16 @@ export class LinearClient {
       apiKey: options.apiToken,
     });
     this.queue = options.queue || createConcurrencyQueue();
+    // Personal API Key (префикс lin_api_) никогда не поддерживает режим OAuth actor=app
+    this.supportsActorApp = options.supportsActorApp ?? !options.apiToken.startsWith('lin_api_');
+  }
+
+  /**
+   * Проверка возможности использования атрибута createAsUser (требует режима OAuth actor=app).
+   * Для стандартных Personal API Key (lin_api_*) возвращает false.
+   */
+  canUseCreateAsUser(): boolean {
+    return this.supportsActorApp;
   }
 
   /**
@@ -433,25 +445,71 @@ export class LinearClient {
           { issueId: input.issueId, createAsUser: input.createAsUser },
           t('logs.linearClient.creatingComment'),
         );
-        const commentPayload = await this.sdk.createComment({
-          issueId: input.issueId,
-          body: input.body,
-          createAsUser: input.createAsUser || undefined,
-          displayIconUrl: input.displayIconUrl || undefined,
-        });
 
-        const comment = await commentPayload.comment;
-        if (!comment) {
-          throw new Error(
-            `Не удалось получить созданный комментарий Linear к задаче ${input.issueId}`,
-          );
+        const canSendCreateAsUser = Boolean(input.createAsUser && this.supportsActorApp);
+
+        try {
+          const commentPayload = await this.sdk.createComment({
+            issueId: input.issueId,
+            body: input.body,
+            createAsUser: canSendCreateAsUser ? input.createAsUser : undefined,
+            displayIconUrl: canSendCreateAsUser ? input.displayIconUrl : undefined,
+          });
+
+          const comment = await commentPayload.comment;
+          if (!comment) {
+            throw new Error(
+              `Не удалось получить созданный комментарий Linear к задаче ${input.issueId}`,
+            );
+          }
+
+          return {
+            id: comment.id,
+            issueId: input.issueId,
+            body: comment.body,
+          };
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          // Linear GraphQL ошибка: `createAsUser` used without OAuth `actor=app` mode
+          if (
+            errMsg.includes('createAsUser') ||
+            errMsg.includes('actor=app') ||
+            errMsg.includes('OAuth')
+          ) {
+            if (this.supportsActorApp) {
+              this.supportsActorApp = false;
+              logger.warn(
+                'Токен Linear не поддерживает режим OAuth actor=app (createAsUser). Создание комментариев переключено в стандартный режим с сохранением автора в тексте.',
+              );
+            }
+
+            // Fallback: создаем комментарий без createAsUser с гарантированным сохранением автора в теле
+            const fallbackBody =
+              input.createAsUser && !input.body.startsWith('> 💬')
+                ? `> 💬 **${input.createAsUser}**:\n\n${input.body}`
+                : input.body;
+
+            const fallbackPayload = await this.sdk.createComment({
+              issueId: input.issueId,
+              body: fallbackBody,
+            });
+
+            const fallbackComment = await fallbackPayload.comment;
+            if (!fallbackComment) {
+              throw new Error(
+                `Не удалось создать комментарий Linear к задаче ${input.issueId} в режиме fallback`,
+              );
+            }
+
+            return {
+              id: fallbackComment.id,
+              issueId: input.issueId,
+              body: fallbackComment.body,
+            };
+          }
+
+          throw err;
         }
-
-        return {
-          id: comment.id,
-          issueId: input.issueId,
-          body: comment.body,
-        };
       }),
     ) as Promise<LinearComment>;
   }
