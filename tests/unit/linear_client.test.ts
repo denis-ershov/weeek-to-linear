@@ -236,7 +236,10 @@ describe('clients/linear/client (Full Suite)', () => {
     mockSdkInstance.createComment
       .mockRejectedValueOnce(new Error('`createAsUser` used without OAuth `actor=app` mode'))
       .mockResolvedValueOnce({
-        comment: Promise.resolve({ id: 'com_fallback', body: '> 💬 **Denis Author**:\n\nFallback comment' }),
+        comment: Promise.resolve({
+          id: 'com_fallback',
+          body: '> 💬 **Denis Author**:\n\nFallback comment',
+        }),
       });
 
     const comment = await oauthClient.createComment({

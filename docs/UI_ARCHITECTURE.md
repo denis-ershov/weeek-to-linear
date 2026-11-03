@@ -95,16 +95,16 @@ src/server/
 
 ## 4. Спецификация REST API и SSE
 
-| Метод  | Путь                  | Назначение                                                            |
-| :----- | :-------------------- | :-------------------------------------------------------------------- |
-| `GET`  | `/api/status`         | Проверка статуса сервера и предзагрузка токенов из `.env`             |
-| `POST` | `/api/auth/test`      | Тестирование токенов WEEEK и Linear                                   |
-| `GET`  | `/api/weeek/projects` | Список проектов WEEEK со счетчиками задач                             |
-| `GET`  | `/api/weeek/users`    | Список участников WEEEK (`/ws/members` + сканирование по `projectIds`)|
-| `GET`  | `/api/linear/teams`   | Список доступных команд Linear                                        |
-| `GET`  | `/api/linear/states`  | Список Workflow состояний для выбранной команды                       |
-| `GET`  | `/api/linear/users`   | Список пользователей Linear                                           |
-| `POST` | `/api/migrate/start`  | Запуск конвейера миграции                                             |
-| `POST` | `/api/migrate/stop`   | Остановка текущего процесса миграции                                  |
-| `GET`  | `/api/migrate/stream` | Поток событий Server-Sent Events (SSE)                                |
-| `GET`  | `/api/reports/latest` | Получение последнего сформированного отчета                           |
+| Метод  | Путь                  | Назначение                                                             |
+| :----- | :-------------------- | :--------------------------------------------------------------------- |
+| `GET`  | `/api/status`         | Проверка статуса сервера и предзагрузка токенов из `.env`              |
+| `POST` | `/api/auth/test`      | Тестирование токенов WEEEK и Linear                                    |
+| `GET`  | `/api/weeek/projects` | Список проектов WEEEK со счетчиками задач                              |
+| `GET`  | `/api/weeek/users`    | Список участников WEEEK (`/ws/members` + сканирование по `projectIds`) |
+| `GET`  | `/api/linear/teams`   | Список доступных команд Linear                                         |
+| `GET`  | `/api/linear/states`  | Список Workflow состояний для выбранной команды                        |
+| `GET`  | `/api/linear/users`   | Список пользователей Linear                                            |
+| `POST` | `/api/migrate/start`  | Запуск конвейера миграции                                              |
+| `POST` | `/api/migrate/stop`   | Остановка текущего процесса миграции                                   |
+| `GET`  | `/api/migrate/stream` | Поток событий Server-Sent Events (SSE)                                 |
+| `GET`  | `/api/reports/latest` | Получение последнего сформированного отчета                            |

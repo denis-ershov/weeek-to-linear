@@ -41,7 +41,7 @@ jobs:
         continue-on-error: true
 
       - name: Check code formatting
-        run: pnpm npx prettier --check "src/**/*.{ts,js,json}" "tests/**/*.{ts,js,json}" "docs/**/*.md"
+        run: pnpm format:check
 
       - name: Run linter
         run: pnpm lint
