@@ -6,6 +6,11 @@
 
 ## [0.4.0] - 2026-09-04
 
+- **Устранение уязвимостей безопасности (Security Audit & Dependency Upgrades)**:
+  - Обновлена библиотека схем [`zod`](file:///e:/DEV/Project/weeek-to-linear/src/config/env.ts) с `^3.24.2` до `^4.6.7` для устранения уязвимости отказа в обслуживании и исчерпания памяти (CVE-2023-54404 / GHSA-mrhx-c7xc-m3w5);
+  - В [`src/config/env.ts`](file:///e:/DEV/Project/weeek-to-linear/src/config/env.ts) скорректирована схема `API_CONCURRENCY` под строгую типизацию Zod 4;
+  - В [`package.json`](file:///e:/DEV/Project/weeek-to-linear/package.json) сконфигурированы `pnpm.overrides` для зависимостей с высоким и критическим уровнем риска (`tinypool >=2.1.2`, `vite >=7.3.7`, `js-yaml >=4.3.2`, `source-map-js >=1.2.2`, `brace-expansion`);
+  - Успешно пройден аудит безопасности `pnpm audit --audit-level=high` (0 high, 0 critical).
 - **Устранение сбоя Linear API `createAsUser used without OAuth actor=app mode` при переносе комментариев**:
   - В соответствии со спецификацией Linear API (`https://linear.app/developers/oauth-actor-authorization`) Personal API Keys (`lin_api_*`) не поддерживают режим `OAuth actor=app` и атрибут `createAsUser`;
   - В [`src/clients/linear/client.ts`](file:///e:/DEV/Project/weeek-to-linear/src/clients/linear/client.ts) внедрено автоматическое определение типа токена: для Personal API Keys передача `createAsUser` блокируется, а при возникновении ошибки от Linear API срабатывает мгновенный безотказный fallback без потери автора;

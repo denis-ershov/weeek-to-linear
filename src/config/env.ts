@@ -20,9 +20,9 @@ export const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'silent']).default('info'),
   API_CONCURRENCY: z
     .string()
+    .default(String(CONSTANTS.DEFAULT_CONCURRENCY))
     .transform(val => parseInt(val, 10))
-    .pipe(z.number().min(1).max(10))
-    .default(String(CONSTANTS.DEFAULT_CONCURRENCY)),
+    .pipe(z.number().min(1).max(10)),
   STATE_FILE: z.string().default(CONSTANTS.DEFAULT_STATE_FILE),
 });
 
